@@ -1,6 +1,6 @@
 package javaTokenizer
 
-import "TokenAndParse/src/tokenizer"
+import "tp/src/tokenizer"
 
 func Tokenizer() *tokenizer.Tokenizer {
 	tokenizerObj := tokenizer.Tokenizer{

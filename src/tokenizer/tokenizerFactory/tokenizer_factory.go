@@ -1,9 +1,9 @@
 package tokenizerFactory
 
 import (
-	"TokenAndParse/src/tokenizer"
-	"TokenAndParse/src/tokenizer/tokenizerFactory/javaTokenizer"
-	"TokenAndParse/src/util"
+	"tp/src/tokenizer"
+	"tp/src/tokenizer/tokenizerFactory/javaTokenizer"
+	"tp/src/util"
 )
 
 func TokenizeGivenLanguageAndFile(language string, path string) []tokenizer.Token {

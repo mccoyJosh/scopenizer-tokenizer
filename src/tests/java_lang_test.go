@@ -1,11 +1,11 @@
 package tests
 
 import (
-	"TokenAndParse/src/tokenizer/tokenizerFactory"
-	"TokenAndParse/src/util"
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
+	"tp/src/tokenizer/tokenizerFactory"
+	"tp/src/util"
 )
 
 func Test_javaTokenizer(t *testing.T) {

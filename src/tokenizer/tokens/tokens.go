@@ -1,15 +1,6 @@
-package tokenizer
+package tokens
 
 import "fmt"
-
-type Token struct {
-	LineNumber    int
-	TabNumber     int
-	BracketNumber int
-	SymbolicName  string
-	RuleName      string
-	Text          string
-}
 
 func CreateUnidentifiedToken(text string, lineNumber int, tabNum int, bracketNumber int) Token {
 	return Token{

@@ -3,6 +3,7 @@ package tokenizer
 import (
 	"fmt"
 	"strings"
+	tk "tp/src/tokenizer/tokens"
 )
 
 type Tokenizer struct {
@@ -19,9 +20,9 @@ type Tokenizer struct {
 	StringAndCommentEnder  func(text *string, selectionText string, lookForThisString string, pos int) bool
 }
 
-func (tkzr *Tokenizer) Tokenize(text string) []Token {
+func (tkzr *Tokenizer) Tokenize(text string) []tk.Token {
 	LineTokens := tkzr.splitIntoNewLines(tkzr.removeCommentsAndStrings(text))
-	FinalTokens := make([]Token, 0)
+	FinalTokens := make([]tk.Token, 0)
 	for i := 0; i < len(LineTokens); i++ {
 		tks := tkzr.splitLineTokensToIndividualTokens(LineTokens[i])
 		for i := 0; i < len(tks); i++ {
@@ -31,8 +32,8 @@ func (tkzr *Tokenizer) Tokenize(text string) []Token {
 	return FinalTokens
 }
 
-func (tkzr *Tokenizer) splitLineTokensToIndividualTokens(t Token) []Token {
-	retTokens := make([]Token, 0)
+func (tkzr *Tokenizer) splitLineTokensToIndividualTokens(t tk.Token) []tk.Token {
+	retTokens := make([]tk.Token, 0)
 	textOfLine := t.Text
 	/* so, identifiers/keywords and such can only consist of:
 	 a-z    A-Z    0-9   and underscores (_)
@@ -72,7 +73,7 @@ func (tkzr *Tokenizer) splitLineTokensToIndividualTokens(t Token) []Token {
 	return retTokens
 }
 
-func (tkzr *Tokenizer) identifyToken(str string, ln int, tab int, isKeyword bool) Token {
+func (tkzr *Tokenizer) identifyToken(str string, ln int, tab int, isKeyword bool) tk.Token {
 	symbolicName := ""
 	ruleName := ""
 
@@ -108,7 +109,7 @@ func (tkzr *Tokenizer) identifyToken(str string, ln int, tab int, isKeyword bool
 		}
 	}
 
-	return Token{
+	return tk.Token{
 		LineNumber:    ln,
 		TabNumber:     tab,
 		BracketNumber: tkzr.BracketCountRunner,
@@ -118,13 +119,13 @@ func (tkzr *Tokenizer) identifyToken(str string, ln int, tab int, isKeyword bool
 	}
 }
 
-func (tkzr *Tokenizer) splitIntoNewLines(s string) []Token {
+func (tkzr *Tokenizer) splitIntoNewLines(s string) []tk.Token {
 	lines := strings.Split(s, "\n")
-	Tokens := make([]Token, 0)
+	Tokens := make([]tk.Token, 0)
 	for i := 0; i < len(lines); i++ {
 		if lines[i] != "" {
 			tabNumber, noTabText := tkzr.getNumberOfAndRemoveTabs(lines[i])
-			Tokens = append(Tokens, CreateUnidentifiedToken(noTabText, i+1, tabNumber, -1))
+			Tokens = append(Tokens, tk.CreateUnidentifiedToken(noTabText, i+1, tabNumber, -1))
 		}
 	}
 	return Tokens
@@ -211,7 +212,7 @@ func (tkzr *Tokenizer) removeCommentsAndStrings(text string) string {
 	return text
 }
 
-func PrintOutTextOfTokens(tokens []Token) {
+func PrintOutTextOfTokens(tokens []tk.Token) {
 	currentLine := 0
 	for i := 0; i < len(tokens); i++ {
 		t := tokens[i]
@@ -236,7 +237,7 @@ func printNumberOfTabs(n int) {
 	}
 }
 
-func PrintAllTokens(FinalTokens []Token) {
+func PrintAllTokens(FinalTokens []tk.Token) {
 	for i := 0; i < len(FinalTokens); i++ {
 		FinalTokens[i].PrintToken()
 	}
