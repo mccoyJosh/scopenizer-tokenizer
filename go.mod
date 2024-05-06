@@ -1,4 +1,4 @@
-module TokenAndParse
+module tp
 
 go 1.19
 
