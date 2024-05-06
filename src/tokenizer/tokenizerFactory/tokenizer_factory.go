@@ -3,10 +3,11 @@ package tokenizerFactory
 import (
 	"tp/src/tokenizer"
 	"tp/src/tokenizer/tokenizerFactory/javaTokenizer"
+	"tp/src/tokenizer/tokens"
 	"tp/src/util"
 )
 
-func TokenizeGivenLanguageAndFile(language string, path string) []tokenizer.Token {
+func TokenizeGivenLanguageAndFile(language string, path string) []tokens.Token {
 	tknzr := GetTokenizer(language)
 
 	if tknzr != nil {
