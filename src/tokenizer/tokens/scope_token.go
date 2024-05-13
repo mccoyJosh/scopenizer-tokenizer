@@ -6,31 +6,77 @@ import (
 	"tp/src/util"
 )
 
-type ScopeToken struct {
+// ScopeObj
+// Defines the scope object
+//
+// scopeType: Defines what type of scope this is; will be an identifier for the info contained within. For example: if this scope is a method, the info within will be of type MethodInfo, or whatever info is needed for this type of object
+//
+// info: Custom info pertaining to this scope
+//
+// tokenList: List of all tokens in this given scope
+//
+// scopeIndices: This array give quick access to where ScopeObj objects are found within the tokenList by storing the indices of said ScopeObj's
+//
+// size: This is the number of tokens within this scope object. DOES NOT INCLUDE INNER SCOPE SIZES
+type ScopeObj struct {
 	scopeType    string
-	tokenList    []*interface{}
+	info         *any
+	tokenList    []Token
 	scopeIndices []int
 	size         int
-	totalSize    int
 }
 
-// InitTokenList
-// This will construct a token list object
-func InitTokenList() ScopeToken {
-	return ScopeToken{
+// InitScope
+// This will construct a scope object.
+// This method can take an array of tokens as parameters
+// as to have some initial tokens in the scope
+func InitScope(lists ...[]Token) ScopeObj {
+	sc := ScopeObj{
 		scopeType:    UNKNOWN_SCOPE_STRING,
-		tokenList:    make([]*interface{}, 0),
+		info:         nil,
+		tokenList:    make([]Token, 0),
 		scopeIndices: make([]int, 0),
 		size:         0,
-		// totalSize is initially -1 as it NEEDS be updated once a scope is finished. -1 should indicate this was not done
-		totalSize: -1,
+	}
+
+	for _, list := range lists {
+		for _, token := range list {
+			sc.Push(token)
+		}
+	}
+
+	if len(lists) != 0 {
+		sc.FixScopeIndices()
+	}
+
+	return sc
+}
+
+func InitScopeTokenToken(scopes ...*ScopeObj) *Token {
+	// If a SINGLE scope is provided, it will use it as the scope within the scope token
+	// If not, it will create an empty scope object for this token
+	var providedScope ScopeObj
+	if len(scopes) == 1 {
+		providedScope = *scopes[0]
+	} else {
+		providedScope = InitScope()
+	}
+
+	return &Token{
+		LineNumber:    0,
+		TabNumber:     0,
+		BracketNumber: 0,
+		SymbolicName:  "",
+		RuleName:      SCOPE_TOKEN_STIRNG,
+		Text:          "",
+		scopeToken:    &providedScope,
 	}
 }
 
 // Size
 // This returns the number of tokens in this list as an integer
 // This size does not include the number of tokens inside of inner scopes
-func (tl *ScopeToken) Size() int {
+func (tl *ScopeObj) Size() int {
 	return tl.size
 }
 
@@ -40,27 +86,25 @@ func (tl *ScopeToken) Size() int {
 // This does not include the number of scopes.
 // WARNING: This does re-evaluate the total size everytime it is called due to
 // the fact one could change the token list at any point!
-func (tl *ScopeToken) TotalSize() int {
-	tl.setTotalSize()
-	return tl.totalSize
+func (tl *ScopeObj) TotalSize() int {
+	return tl.setTotalSize()
 }
 
 // setTotalSize
 // This will go through the scopes found within this list
 // and get the total number of tokens found within.
 // This should get the total number of tokens within this and all inner scopes.
-func (tl *ScopeToken) setTotalSize() int {
+func (tl *ScopeObj) setTotalSize() int {
 	// If there are no inner scopes, we return
 	if len(tl.scopeIndices) <= 0 {
-		tl.totalSize = tl.size
-		return tl.totalSize
+		return tl.size
 	}
 
 	innerTotals := 0
 	for _, index := range tl.scopeIndices {
 		token := tl.tokenList[index] //
-		if ValidScopeToken(token) {
-			scopeToken := (*token).(ScopeToken)
+		if token.ValidScopeToken() {
+			scopeToken := token.scopeToken
 			innerTotals += scopeToken.setTotalSize()
 		} else {
 			err := errors.New(fmt.Sprintf("Non-Scope Token Found At Supposed Scope Index: %d", index))
@@ -70,17 +114,16 @@ func (tl *ScopeToken) setTotalSize() int {
 
 	// Removes the scope tokens for the count, as we only want 'real' tokens
 	total := innerTotals + tl.size - len(tl.scopeIndices)
-	tl.totalSize = total
 	return total
 }
 
 // FixScopeIndices
 // This will assign the correct values of scope tokens in the event where
 // they may need to be fixed
-func (tl *ScopeToken) FixScopeIndices() {
+func (tl *ScopeObj) FixScopeIndices() {
 	tl.scopeIndices = make([]int, 0)
 	for index, token := range tl.tokenList {
-		if ValidScopeToken(token) {
+		if token.ValidScopeToken() {
 			tl.scopeIndices = append(tl.scopeIndices, index)
 		}
 	}
@@ -89,23 +132,23 @@ func (tl *ScopeToken) FixScopeIndices() {
 // Push
 // This adds a token to the token list at the end of the list,
 // much like one would push an item to the top of a stack.
-func (tl *ScopeToken) Push(i *interface{}) {
-	tl.Insert(i, tl.size)
+func (tl *ScopeObj) Push(tt Token) {
+	tl.Insert(tt, tl.size)
 }
 
 // Insert
 // Inserts a token into the token list. Returns nothing.
 // If this token is not inserted at the end of the list,
 // it may need to fix the scope index list
-func (tl *ScopeToken) Insert(i *interface{}, index int) {
-	if ValidTokenType(i) && index >= 0 && index <= tl.size {
+func (tl *ScopeObj) Insert(tt Token, index int) {
+	if index >= 0 && index <= tl.size {
 		tl.tokenList = append(tl.tokenList[:index+1], tl.tokenList[index:]...)
-		tl.tokenList[index] = i
+		tl.tokenList[index] = tt
 		tl.size++
 
 		if index != tl.size-1 {
 			tl.FixScopeIndices()
-		} else if ValidScopeToken(i) {
+		} else if tt.ValidScopeToken() {
 			tl.scopeIndices = append(tl.scopeIndices, index)
 		}
 	} else {
@@ -117,10 +160,10 @@ func (tl *ScopeToken) Insert(i *interface{}, index int) {
 // GetIndex
 // This will return the token at the given index.
 // Returns a pointer to an interface object. This object
-// Will need to be converted to either a ScopeToken or Token object
-func (tl *ScopeToken) GetIndex(index int) *interface{} {
+// Will need to be converted to either a ScopeObj or Token object
+func (tl *ScopeObj) GetIndex(index int) *Token {
 	if index >= 0 && index < tl.size {
-		return tl.tokenList[index]
+		return &tl.tokenList[index]
 	}
 	err := errors.New(fmt.Sprintf("Invalid (out of bounds) index provided to token list GET INDEX: %d", index))
 	util.Error(err.Error(), err)
@@ -130,7 +173,7 @@ func (tl *ScopeToken) GetIndex(index int) *interface{} {
 // Pop
 // This will get and remove the item at the end of the token list,
 // much like one would pop the top item off the top of a stack
-func (tl *ScopeToken) Pop() *interface{} {
+func (tl *ScopeObj) Pop() *Token {
 	i := tl.Front()
 	tl.Delete(tl.size - 1)
 	return i
@@ -139,14 +182,14 @@ func (tl *ScopeToken) Pop() *interface{} {
 // Front
 // Returns the items at the front of the list of tokens,
 // i.e. the value at the index of size - 1
-func (tl *ScopeToken) Front() *interface{} {
+func (tl *ScopeObj) Front() *Token {
 	return tl.GetIndex(tl.size - 1)
 }
 
 // Delete
 // This removes a token from the token list given its index.
 // If this index is out of bounds, nothing is done and an error is printed
-func (tl *ScopeToken) Delete(index int) {
+func (tl *ScopeObj) Delete(index int) {
 	if index >= 0 && index < tl.size {
 		tl.tokenList = append(tl.tokenList[:index], tl.tokenList[index+1:]...)
 		tl.size--
@@ -162,9 +205,15 @@ func (tl *ScopeToken) Delete(index int) {
 // add the given range of tokens to a scope token and place the new
 // scope token at the start index. The tokens in the range will only
 // be in the new scope token and will be removed from the token it is called from.
-func (tl *ScopeToken) ScopifyRange(start int, end int) {
+func (tl *ScopeObj) ScopifyRange(start int, end int) {
 	if start < end && start >= 0 && start < tl.size && end >= 0 && end < tl.size {
-		// TODO: actually 'scopify' a range of tokens
+		tokensSubset := tl.tokenList[start:end] // TODO: ensure this includes said element
+		tokensSubsetLength := end - start + 1
+		newScopeObj := InitScope(tokensSubset)
+		for i := 0; i < tokensSubsetLength; i++ {
+			tl.Delete(start)
+		}
+		tl.Insert(*InitScopeTokenToken(&newScopeObj), start)
 	} else {
 		err := errors.New(fmt.Sprintf("Invalid (out of bounds) index provided to token list SCOPIFY RANGE: %d, %d", start, end))
 		util.Error(err.Error(), err)
