@@ -317,7 +317,7 @@ func (so *ScopeObj) ConvertToArray() []*Token {
 	for i := 0; i < so.GetNumberOfScopes(); i++ {
 		endIndex = so.scopeIndices[i]
 		rtnArray = append(rtnArray, so.tokenList[initialIndex:endIndex]...)
-		rtnArray = append(rtnArray, so.tokenList[endIndex].GetScopeToken().ConvertToArray()...) // Makes ecursive Call
+		rtnArray = append(rtnArray, so.tokenList[endIndex].GetScopeToken().ConvertToArray()...) // Makes recursive Call
 		initialIndex = endIndex + 1
 	}
 	rtnArray = append(rtnArray, so.tokenList[initialIndex:len(so.tokenList)]...)

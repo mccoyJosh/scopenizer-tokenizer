@@ -128,8 +128,9 @@ func Test_SetType(t *testing.T) {
 func Test_Get_Scope(t *testing.T) {
 	tokenArray := CreateTestTokenArray("testToken", 10, 2, 1, 1)
 	exampleScope := tokens.InitScope(tokenArray)
-	exampleInnerScope := exampleScope.GetScope(0)
+	exampleInnerScope, err := exampleScope.GetScope(0)
 
+	assert.Nil(t, err)
 	assert.Equal(t, 10, exampleInnerScope.Size())
 	assert.Equal(t, 1, exampleInnerScope.GetNumberOfScopes())
 	assert.Equal(t, 19, exampleInnerScope.TotalSize())
@@ -138,8 +139,9 @@ func Test_Get_Scope(t *testing.T) {
 func Test_Get_Scope_Out_Of_Bounds(t *testing.T) {
 	tokenArray := CreateTestTokenArray("testToken", 10, 2, 1, 1)
 	exampleScope := tokens.InitScope(tokenArray)
-	exampleInnerScope := exampleScope.GetScope(10)
+	exampleInnerScope, err := exampleScope.GetScope(10)
 
+	assert.Error(t, err)
 	var expectedResult *tokens.ScopeObj // is nil
 	assert.Equal(t, expectedResult, exampleInnerScope)
 }
@@ -151,7 +153,10 @@ func Test_Push(t *testing.T) {
 	pushToken := tokens.CreateUnidentifiedToken("if", 1, 1, 1)
 	pushToken.SetValues("KEYWORD", "IF")
 	exampleScope.Push(&pushToken)
-	assert.Equal(t, &pushToken, exampleScope.At(10))
+
+	token, err := exampleScope.At(10)
+	assert.Nil(t, err)
+	assert.Equal(t, &pushToken, token)
 }
 
 func Test_Insert(t *testing.T) {
@@ -160,20 +165,32 @@ func Test_Insert(t *testing.T) {
 
 	pushToken := tokens.CreateUnidentifiedToken("if", 1, 1, 1)
 	pushToken.SetValues("KEYWORD", "IF")
-	exampleScope.Insert(&pushToken, 0)
+	err := exampleScope.Insert(&pushToken, 0)
+
+	assert.Nil(t, err)
 
 	pushToken2 := tokens.CreateUnidentifiedToken("else", 1, 1, 1)
 	pushToken2.SetValues("KEYWORD", "ELSE")
-	exampleScope.Insert(&pushToken2, 0)
+	err = exampleScope.Insert(&pushToken2, 0)
 
-	assert.Equal(t, &pushToken2, exampleScope.At(0))
-	assert.Equal(t, &pushToken, exampleScope.At(1))
+	assert.Nil(t, err)
+
+	token1, err1 := exampleScope.At(0)
+	token2, err2 := exampleScope.At(1)
+
+	assert.Nil(t, err1)
+	assert.Nil(t, err2)
+	assert.Equal(t, &pushToken2, token1)
+	assert.Equal(t, &pushToken, token2)
 }
 
 func Test_At_Nothing_Found(t *testing.T) {
 	exampleScope := tokens.InitScope()
 	var nullToken *tokens.Token
-	assert.Equal(t, nullToken, exampleScope.At(0))
+
+	token, err := exampleScope.At(0)
+	assert.Error(t, err)
+	assert.Equal(t, nullToken, token)
 }
 
 func Test_Pop(t *testing.T) {
