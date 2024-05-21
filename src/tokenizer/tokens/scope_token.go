@@ -97,6 +97,12 @@ func (so *ScopeObj) GetType() string {
 	return so.scopeType
 }
 
+// GetTokenList
+// Returns the scope object's token list
+func (so *ScopeObj) GetTokenList() []*Token {
+	return so.tokenList
+}
+
 // SetType
 // Given a string parameter, this will set the scope's type
 func (so *ScopeObj) SetType(typeString string) {

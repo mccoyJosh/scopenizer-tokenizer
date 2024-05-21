@@ -1,6 +1,7 @@
 package structure
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"math/rand"
 	"testing"
@@ -194,24 +195,159 @@ func Test_At_Nothing_Found(t *testing.T) {
 }
 
 func Test_Pop(t *testing.T) {
-	t.Skip()
+	tokenArray := CreateTestTokenArray("testToken", 4, 0, 0, 1)
+	exampleScope := tokens.InitScope(tokenArray)
+
+	pushToken := tokens.CreateUnidentifiedToken("if", 1, 1, 1)
+	pushToken.SetValues("KEYWORD", "IF")
+	exampleScope.Push(&pushToken)
+
+	receivedToken := exampleScope.Pop()
+
+	assert.Equal(t, 4, exampleScope.Size())
+	assert.Equal(t, pushToken, *receivedToken)
+}
+
+func Test_Pop_Nothing(t *testing.T) {
+	exampleScope := tokens.InitScope()
+
+	receivedToken := exampleScope.Pop()
+
+	assert.Equal(t, 0, exampleScope.Size())
+	assert.Nil(t, receivedToken)
 }
 
 func Test_Front(t *testing.T) {
-	t.Skip()
+	tokenArray := CreateTestTokenArray("testToken", 4, 0, 0, 1)
+	exampleScope := tokens.InitScope(tokenArray)
+
+	pushToken := tokens.CreateUnidentifiedToken("if", 1, 1, 1)
+	pushToken.SetValues("KEYWORD", "IF")
+	exampleScope.Push(&pushToken)
+
+	receivedToken := exampleScope.Front()
+
+	assert.Equal(t, 5, exampleScope.Size())
+	assert.Equal(t, pushToken, *receivedToken)
 }
 
-func Test_Delete(t *testing.T) {
-	t.Skip()
+func Test_Front_Nothing(t *testing.T) {
+	exampleScope := tokens.InitScope()
+
+	receivedToken := exampleScope.Front()
+
+	assert.Equal(t, 0, exampleScope.Size())
+	assert.Nil(t, receivedToken)
+}
+
+func Test_Delete_Front(t *testing.T) {
+	exampleScope := tokens.InitScope()
+
+	pushToken := tokens.CreateUnidentifiedToken("if", 1, 1, 1)
+	pushToken.SetValues("KEYWORD", "IF")
+	exampleScope.Push(&pushToken)
+
+	pushToken2 := tokens.CreateUnidentifiedToken("else", 1, 1, 1)
+	pushToken2.SetValues("KEYWORD", "ELSE")
+	exampleScope.Push(&pushToken2)
+
+	pushToken3 := tokens.CreateUnidentifiedToken("{", 1, 1, 1)
+	pushToken3.SetValues("SYMBOL", "RBRACKET")
+	exampleScope.Push(&pushToken3)
+
+	assert.Equal(t, 3, exampleScope.Size())
+
+	err := exampleScope.Delete(0)
+	assert.Nil(t, err)
+
+	tokenA, err1 := exampleScope.At(0)
+	tokenB, err2 := exampleScope.At(1)
+
+	assert.Nil(t, err1)
+	assert.Nil(t, err2)
+
+	assert.Equal(t, pushToken2, *tokenA)
+	assert.Equal(t, pushToken3, *tokenB)
+}
+
+func Test_Delete_Middle(t *testing.T) {
+	exampleScope := tokens.InitScope()
+
+	pushToken := tokens.CreateUnidentifiedToken("if", 1, 1, 1)
+	pushToken.SetValues("KEYWORD", "IF")
+	exampleScope.Push(&pushToken)
+
+	pushToken2 := tokens.CreateUnidentifiedToken("else", 1, 1, 1)
+	pushToken2.SetValues("KEYWORD", "ELSE")
+	exampleScope.Push(&pushToken2)
+
+	pushToken3 := tokens.CreateUnidentifiedToken("{", 1, 1, 1)
+	pushToken3.SetValues("SYMBOL", "RBRACKET")
+	exampleScope.Push(&pushToken3)
+
+	assert.Equal(t, 3, exampleScope.Size())
+
+	err := exampleScope.Delete(1)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, exampleScope.Size())
+
+	tokenA, err1 := exampleScope.At(0)
+	tokenB, err2 := exampleScope.At(1)
+
+	assert.Nil(t, err1)
+	assert.Nil(t, err2)
+
+	assert.Equal(t, pushToken, *tokenA)
+	assert.Equal(t, pushToken3, *tokenB)
+}
+
+func Test_Delete_End(t *testing.T) {
+	exampleScope := tokens.InitScope()
+
+	pushToken := tokens.CreateUnidentifiedToken("if", 1, 1, 1)
+	pushToken.SetValues("KEYWORD", "IF")
+	exampleScope.Push(&pushToken)
+
+	pushToken2 := tokens.CreateUnidentifiedToken("else", 1, 1, 1)
+	pushToken2.SetValues("KEYWORD", "ELSE")
+	exampleScope.Push(&pushToken2)
+
+	pushToken3 := tokens.CreateUnidentifiedToken("{", 1, 1, 1)
+	pushToken3.SetValues("SYMBOL", "RBRACKET")
+	exampleScope.Push(&pushToken3)
+
+	assert.Equal(t, 3, exampleScope.Size())
+
+	err := exampleScope.Delete(2)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, exampleScope.Size())
+
+	tokenA, err1 := exampleScope.At(0)
+	tokenB, err2 := exampleScope.At(1)
+
+	assert.Nil(t, err1)
+	assert.Nil(t, err2)
+
+	assert.Equal(t, pushToken, *tokenA)
+	assert.Equal(t, pushToken2, *tokenB)
 }
 
 func Test_ScopifyRange_OneSection(t *testing.T) {
 	tokenArray := CreateTestTokenArray("testToken", 10, 0, 0, 1)
 	exampleScope := tokens.InitScope(tokenArray)
-	exampleScope.ScopifyRange(0, 9)
+	err := exampleScope.ScopifyRange(0, 9)
+	assert.Nil(t, err)
 	assert.Equal(t, 1, exampleScope.Size())
 	assert.Equal(t, 10, exampleScope.TotalSize())
 	assert.Equal(t, 1, exampleScope.GetNumberOfScopes())
+
+	scopifiedRangeFound, err := exampleScope.GetScope(0)
+	assert.Nil(t, err)
+	for i := 0; i < scopifiedRangeFound.Size(); i++ {
+		tokenFound, err := scopifiedRangeFound.At(i)
+		assert.Nil(t, err, fmt.Sprintf("Expected no error at index %d in Test_ScopifyRange_OneSection", i))
+		assert.Equal(t, tokenArray[i], tokenFound, fmt.Sprintf("Expected same token at index %d in Test_ScopifyRange_OneSection", i))
+	}
 }
 
 func Test_ConvertToArray(t *testing.T) {
