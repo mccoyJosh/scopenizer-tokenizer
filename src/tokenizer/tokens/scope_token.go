@@ -21,7 +21,7 @@ import (
 type ScopeObj struct {
 	scopeType    string
 	info         *any
-	tokenList    []Token
+	tokenList    []*Token
 	scopeIndices []int
 	size         int
 }
@@ -30,11 +30,11 @@ type ScopeObj struct {
 // This will construct a scope object.
 // This method can take an array of tokens as parameters
 // as to have some initial tokens in the scope
-func InitScope(lists ...[]Token) ScopeObj {
+func InitScope(lists ...[]*Token) ScopeObj {
 	sc := ScopeObj{
 		scopeType:    UNKNOWN_SCOPE_STRING,
 		info:         nil,
-		tokenList:    make([]Token, 0),
+		tokenList:    make([]*Token, 0),
 		scopeIndices: make([]int, 0),
 		size:         0,
 	}
@@ -52,7 +52,7 @@ func InitScope(lists ...[]Token) ScopeObj {
 	return sc
 }
 
-func InitScopeTokenToken(scopes ...*ScopeObj) *Token {
+func InitScopeToken(scopes ...*ScopeObj) *Token {
 	// If a SINGLE scope is provided, it will use it as the scope within the scope token
 	// If not, it will create an empty scope object for this token
 	var providedScope ScopeObj
@@ -78,6 +78,33 @@ func InitScopeTokenToken(scopes ...*ScopeObj) *Token {
 // This size does not include the number of tokens inside of inner scopes
 func (tl *ScopeObj) Size() int {
 	return tl.size
+}
+
+func (tl *ScopeObj) GetType() string {
+	return tl.scopeType
+}
+
+func (tl *ScopeObj) SetType(typeString string) {
+	tl.scopeType = typeString
+}
+
+func (tl *ScopeObj) GetNumberOfScopes() int {
+	return len(tl.scopeIndices)
+}
+
+// GetScope
+// THIS ASSUMES FixScopeIndices HAS BEEN RAN
+// If you have been using the Insert and Delete methods, this method SHOULD HAVE BEEN run already
+// The goal of storing the indices of the token is to save time from searching for them every time, and calling FixScopeIndices everytime in this method would defeat that purpose
+//
+// index: the index of the scope token in the scope indices array. If you use 0 as index, it would be essentially asking for the first scope
+func (tl *ScopeObj) GetScope(index int) *ScopeObj {
+	if index < tl.GetNumberOfScopes() {
+		return tl.tokenList[tl.scopeIndices[index]].scopeToken
+	}
+	err := errors.New(fmt.Sprintf("Invalid (out of bounds) index provided to scope indicies list GETSCOPE: %d", index))
+	util.Error(err.Error(), err)
+	return nil
 }
 
 // TotalSize
@@ -132,7 +159,7 @@ func (tl *ScopeObj) FixScopeIndices() {
 // Push
 // This adds a token to the token list at the end of the list,
 // much like one would push an item to the top of a stack.
-func (tl *ScopeObj) Push(tt Token) {
+func (tl *ScopeObj) Push(tt *Token) {
 	tl.Insert(tt, tl.size)
 }
 
@@ -140,10 +167,14 @@ func (tl *ScopeObj) Push(tt Token) {
 // Inserts a token into the token list. Returns nothing.
 // If this token is not inserted at the end of the list,
 // it may need to fix the scope index list
-func (tl *ScopeObj) Insert(tt Token, index int) {
+func (tl *ScopeObj) Insert(tt *Token, index int) {
 	if index >= 0 && index <= tl.size {
-		tl.tokenList = append(tl.tokenList[:index+1], tl.tokenList[index:]...)
-		tl.tokenList[index] = tt
+		if tl.size == index {
+			tl.tokenList = append(tl.tokenList, tt)
+		} else {
+			tl.tokenList = append(tl.tokenList[:index+1], tl.tokenList[index:]...)
+			tl.tokenList[index] = tt
+		}
 		tl.size++
 
 		if index != tl.size-1 {
@@ -157,13 +188,13 @@ func (tl *ScopeObj) Insert(tt Token, index int) {
 	}
 }
 
-// GetIndex
+// At
 // This will return the token at the given index.
 // Returns a pointer to an interface object. This object
 // Will need to be converted to either a ScopeObj or Token object
-func (tl *ScopeObj) GetIndex(index int) *Token {
+func (tl *ScopeObj) At(index int) *Token {
 	if index >= 0 && index < tl.size {
-		return &tl.tokenList[index]
+		return tl.tokenList[index]
 	}
 	err := errors.New(fmt.Sprintf("Invalid (out of bounds) index provided to token list GET INDEX: %d", index))
 	util.Error(err.Error(), err)
@@ -183,7 +214,7 @@ func (tl *ScopeObj) Pop() *Token {
 // Returns the items at the front of the list of tokens,
 // i.e. the value at the index of size - 1
 func (tl *ScopeObj) Front() *Token {
-	return tl.GetIndex(tl.size - 1)
+	return tl.At(tl.size - 1)
 }
 
 // Delete
@@ -207,15 +238,44 @@ func (tl *ScopeObj) Delete(index int) {
 // be in the new scope token and will be removed from the token it is called from.
 func (tl *ScopeObj) ScopifyRange(start int, end int) {
 	if start < end && start >= 0 && start < tl.size && end >= 0 && end < tl.size {
-		tokensSubset := tl.tokenList[start:end] // TODO: ensure this includes said element
+		tokensSubset := tl.tokenList[start : end+1] // TODO: ensure this includes said element
 		tokensSubsetLength := end - start + 1
 		newScopeObj := InitScope(tokensSubset)
 		for i := 0; i < tokensSubsetLength; i++ {
 			tl.Delete(start)
 		}
-		tl.Insert(*InitScopeTokenToken(&newScopeObj), start)
+		tl.Insert(InitScopeToken(&newScopeObj), start)
 	} else {
 		err := errors.New(fmt.Sprintf("Invalid (out of bounds) index provided to token list SCOPIFY RANGE: %d, %d", start, end))
 		util.Error(err.Error(), err)
 	}
+}
+
+// ConvertToArray
+// This will convert the scope object to an array
+// of all of its tokens. This reduces the tree type structure
+// of the scopes into a single array. This does eliminate
+// The purpose of this method is to provide just the tokens alone without
+// any extra data.
+func (tl *ScopeObj) ConvertToArray() []*Token {
+	rtnArray := make([]*Token, 0)
+	initialIndex := 0
+	endIndex := len(tl.tokenList)
+
+	for i := 0; i < tl.GetNumberOfScopes(); i++ {
+		endIndex = tl.scopeIndices[i]
+		rtnArray = append(rtnArray, tl.tokenList[initialIndex:endIndex]...)
+		rtnArray = append(rtnArray, tl.tokenList[endIndex].GetScopeToken().ConvertToArray()...) // Makes ecursive Call
+		initialIndex = endIndex + 1
+	}
+	rtnArray = append(rtnArray, tl.tokenList[initialIndex:len(tl.tokenList)]...)
+
+	return rtnArray
+}
+
+func (tl *ScopeObj) PrintSimpleText() {
+	for i := 0; i < tl.Size(); i++ {
+		fmt.Print(tl.tokenList[i].SymbolicName + " ")
+	}
+	fmt.Println()
 }

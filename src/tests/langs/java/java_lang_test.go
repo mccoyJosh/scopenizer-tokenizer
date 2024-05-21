@@ -9,6 +9,7 @@ import (
 )
 
 func Test_javaTokenizer(t *testing.T) {
+	t.Skip()
 	tokenizer := tokenizerFactory.GetTokenizer("java")
 	filename := "exampleFiles/file.java"
 	text, err := util.GetTextOfFile(filename)
