@@ -7,30 +7,28 @@ import (
 )
 
 type Token struct {
-	LineNumber    int
-	TabNumber     int
-	BracketNumber int
-	SymbolicName  string
-	RuleName      string
-	Text          string
-	scopeToken    *ScopeObj
+	LineNumber   int
+	TabNumber    int
+	SymbolicName string
+	RuleName     string
+	Text         string
+	scopeToken   *ScopeObj
 }
 
-func CreateUnidentifiedToken(text string, lineNumber int, tabNum int, bracketNumber int) Token {
+func CreateUnidentifiedToken(text string, lineNumber int, tabNum int) Token {
 	return Token{
-		LineNumber:    lineNumber,
-		TabNumber:     tabNum,
-		BracketNumber: bracketNumber,
-		SymbolicName:  "Unidentified",
-		RuleName:      "unidentified",
-		Text:          text,
-		scopeToken:    nil,
+		LineNumber:   lineNumber,
+		TabNumber:    tabNum,
+		SymbolicName: "Unidentified",
+		RuleName:     "unidentified",
+		Text:         text,
+		scopeToken:   nil,
 	}
 }
 
 func (t *Token) PrintToken() {
 	// TODO Fix this
-	fmt.Printf("Token:\n\ttxt:%s\tln:%d\ttb:%d\tbrkc:%d\tsn:%s\trn:%s\n", t.Text, t.LineNumber, t.TabNumber, t.BracketNumber, t.SymbolicName, t.RuleName)
+	fmt.Printf("Token:\n\ttxt:%s\tln:%d\ttb:%d\tbrkc:%d\tsn:%s\trn:%s\n", t.Text, t.LineNumber, t.TabNumber, t.SymbolicName, t.RuleName)
 }
 
 func (t *Token) Equal(t2 Token) bool {

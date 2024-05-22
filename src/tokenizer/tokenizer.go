@@ -1,244 +1,296 @@
 package tokenizer
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	tk "tp/src/tokenizer/tokens"
+	"tp/src/util"
 )
 
 type Tokenizer struct {
-	Type                   string
-	Symbols                [][]string
-	Keywords               []string
-	SpaceSizeString        string
-	BracketIdentifierStart string
-	BracketIdentifierEnd   string
-	BracketCountRunner     int
-	AllowTabs              bool
-	GetBracketCount        bool
-	StringAndCommentFinder func(text *string, pos int) (bool, string)
-	StringAndCommentEnder  func(text *string, selectionText string, lookForThisString string, pos int) bool
+	LanguageType string
+	Symbols      [][]string
+	Keywords     []string
+
+	// Temp Info
+	tempIgnoreChangesFromIncrement bool
+	Text                           *string
+	currentTabLevel                int
+	currentLineNumber              int
+	PotentialKeyword               string
+	StartInfo                      string
+	EndInfo                        string
+	currentIndex                   int
+	CurrentScope                   *tk.ScopeObj
+
+	// Scope Info
+	ScopeStartFunction func(tkzr *Tokenizer) bool
+	ScopeEndFunction   func(tkzr *Tokenizer) bool
+	// Note: These scope functions are intended to find MOST scopes... not all scopes
+
+	// String Info
+	StringStartFunction func(tkzr *Tokenizer) bool
+	StringEndFunction   func(tkzr *Tokenizer) bool
+	IncludeStrings      bool
+
+	// Comment Info
+	CommentStartFunction func(tkzr *Tokenizer) bool
+	CommentEndFunction   func(tkzr *Tokenizer) bool
+	IncludeComments      bool
+
+	// Keyword Info
+	IsKeywordCharacter func(c rune) bool
+
+	// Whitespace Info
+	spaceSizeString       string
+	NumOfSpacesEquallyTab int
+	IgnoreWhitespace      bool
+	IgnoreNewLines        bool
 }
 
-func (tkzr *Tokenizer) Tokenize(text string) []tk.Token {
-	LineTokens := tkzr.splitIntoNewLines(tkzr.removeCommentsAndStrings(text))
-	FinalTokens := make([]tk.Token, 0)
-	for i := 0; i < len(LineTokens); i++ {
-		tks := tkzr.splitLineTokensToIndividualTokens(LineTokens[i])
-		for i := 0; i < len(tks); i++ {
-			FinalTokens = append(FinalTokens, tks[i])
-		}
+func GenerateBasicTokenizerObject() Tokenizer {
+	return Tokenizer{
+		LanguageType: "",
+		Symbols:      nil,
+		Keywords:     nil,
+
+		tempIgnoreChangesFromIncrement: false,
+		Text:                           nil,
+		currentTabLevel:                0,
+		currentLineNumber:              0,
+		PotentialKeyword:               "",
+		StartInfo:                      "",
+		EndInfo:                        "",
+		currentIndex:                   0,
+
+		CurrentScope:       nil,
+		ScopeStartFunction: nil,
+		ScopeEndFunction:   nil,
+
+		StringStartFunction: nil,
+		StringEndFunction:   nil,
+		IncludeStrings:      false,
+
+		CommentStartFunction: nil,
+		CommentEndFunction:   nil,
+		IncludeComments:      false,
+
+		IsKeywordCharacter: nil,
+
+		spaceSizeString:       "",
+		NumOfSpacesEquallyTab: 0,
+		IgnoreWhitespace:      true,
+		IgnoreNewLines:        true,
 	}
-	return FinalTokens
 }
 
-func (tkzr *Tokenizer) splitLineTokensToIndividualTokens(t tk.Token) []tk.Token {
-	retTokens := make([]tk.Token, 0)
-	textOfLine := t.Text
-	/* so, identifiers/keywords and such can only consist of:
-	 a-z    A-Z    0-9   and underscores (_)
-	97-122  65-90  48-57                  95
-		     If this is wrong, fix it HERE
-	*/
-	currentWord := ""
+func (tkzr *Tokenizer) initTempVariables(text *string) {
+	tkzr.tempIgnoreChangesFromIncrement = false
+	tkzr.initSpaceSizeString()
+	tkzr.PotentialKeyword = ""
+	tkzr.currentTabLevel = 0
+	tkzr.currentIndex = 0
+	tkzr.currentLineNumber = 0
+	tkzr.Text = text
+	tkzr.StartInfo = ""
+	tkzr.EndInfo = ""
+}
 
-	for i := 0; i < len(textOfLine); i++ {
-		isValidChar := false
-		if i != len(textOfLine) {
-			numChar := (int)(textOfLine[i])
-			isValidChar = (numChar == 95) || (numChar >= 97 && numChar <= 122) || (numChar >= 65 && numChar <= 90) || (numChar >= 48 && numChar <= 57)
-		}
-		if isValidChar {
-			currentWord += textOfLine[i : i+1]
-		} else {
-			if currentWord != "" {
-				token := tkzr.identifyToken(currentWord, t.LineNumber, t.TabNumber, true)
-				retTokens = append(retTokens, token)
-				currentWord = ""
+func (tkzr *Tokenizer) Tokenize(text string) tk.ScopeObj {
+	tkzr.initTempVariables(&text)
+
+	finalScope := tk.InitScope()
+	finalScope.SetType("File")
+	tkzr.CurrentScope = &finalScope
+
+	for tkzr.IndexInBound() {
+		foundString := tkzr.StringStartFunction(tkzr)
+		foundComment := tkzr.CommentStartFunction(tkzr)
+		foundStartScope := tkzr.ScopeStartFunction(tkzr)
+		foundEndScope := tkzr.ScopeEndFunction(tkzr)
+		foundWhiteSpace := whiteSpaceStartFunction(tkzr)
+
+		if foundString || foundComment || foundStartScope {
+			tkzr.tempIgnoreChangesFromIncrement = true
+			tkzr.IncrementIndex() // TODO: determine if this is necessary or should be left up yo anonymous functions
+
+			if tkzr.PotentialKeyword != "" {
+				tkzr.CurrentScope.Push(tkzr.createKeywordToken(tkzr.PotentialKeyword))
+				tkzr.PotentialKeyword = ""
 			}
-			if i < len(textOfLine) {
-				token := tkzr.identifyToken(textOfLine[i:i+1], t.LineNumber, t.TabNumber, false)
-				if token.SymbolicName != "SPACE" {
-					retTokens = append(retTokens, token)
+
+			if foundWhiteSpace {
+				resultingToken := tkzr.applyFunctionUntilFailureTokenCreation(whiteSpaceEndFunction, "WHITESPACE")
+				tkzr.CurrentScope.Push(resultingToken)
+			} else if foundString {
+				resultingToken := tkzr.applyFunctionUntilFailureTokenCreation(tkzr.StringEndFunction, "STRING")
+				tkzr.CurrentScope.Push(resultingToken)
+			} else if foundComment {
+				resultingToken := tkzr.applyFunctionUntilFailureTokenCreation(tkzr.CommentEndFunction, "COMMENT")
+				tkzr.CurrentScope.Push(resultingToken)
+			} else if foundStartScope {
+				newScopeTkn := tk.InitScopeToken()
+				tkzr.CurrentScope.Push(newScopeTkn)
+				tkzr.CurrentScope = newScopeTkn.GetScopeToken()
+			} else if foundEndScope {
+				parentScope := tkzr.CurrentScope.GetScopeParent()
+				if parentScope == nil {
+					err := errors.New(fmt.Sprintf("Either malformed data attempted to be Tokenized or anonymous functions provided to tokenizers incorrectly defined when scopes being/end"))
+					util.Error(err.Error(), err)
+				} else {
+					tkzr.CurrentScope = parentScope
 				}
 			}
+			tkzr.tempIgnoreChangesFromIncrement = false
+		} else { // Not a scope identifier, not a comment, not a string
+			char := text[tkzr.Index()]
+			if tkzr.IsKeywordCharacter(rune(char)) {
+				tkzr.PotentialKeyword += string(char)
+			} else { // Found a symbol, which needs to be added and
+				if tkzr.PotentialKeyword != "" {
+					tkzr.CurrentScope.Push(tkzr.createKeywordToken(tkzr.PotentialKeyword))
+					tkzr.PotentialKeyword = ""
+				}
+				tkzr.CurrentScope.Push(tkzr.createSymbolToken(string(char)))
+			}
 		}
-	}
-	if currentWord != "" {
-		token := tkzr.identifyToken(currentWord, t.LineNumber, t.TabNumber, true)
-		retTokens = append(retTokens, token)
-		currentWord = ""
+		tkzr.IncrementIndex()
 	}
 
-	return retTokens
+	if tkzr.PotentialKeyword != "" { // TODO: SEE IF ONE LAST CHECK IS NECESSARY
+		tkzr.CurrentScope.Push(tkzr.createKeywordToken(tkzr.PotentialKeyword))
+		tkzr.PotentialKeyword = ""
+	}
+
+	return finalScope
 }
 
-func (tkzr *Tokenizer) identifyToken(str string, ln int, tab int, isKeyword bool) tk.Token {
-	symbolicName := ""
-	ruleName := ""
-
-	if isKeyword {
-		ruleName = "KEYWORD"
-		for i := 0; i < len(tkzr.Keywords); i++ {
-			if str == tkzr.Keywords[i] {
-				symbolicName = strings.ToUpper(tkzr.Keywords[i])
-			}
-		}
-
-		if symbolicName == "" {
-			symbolicName = "IDENTIFIER"
-		}
-	} else {
-		ruleName = "SYMBOL"
-		if tkzr.GetBracketCount {
-			if str == tkzr.BracketIdentifierStart {
-				tkzr.BracketCountRunner++
-			} else if str == tkzr.BracketIdentifierEnd {
-				tkzr.BracketCountRunner--
-			}
-		}
-
-		for i := 0; i < len(tkzr.Symbols); i++ {
-			if str == tkzr.Symbols[i][0] {
-				symbolicName = strings.ToUpper(tkzr.Symbols[i][1])
-			}
-		}
-
-		if symbolicName == "" {
-			symbolicName = "OTHER_SYMBOL"
-		}
-	}
-
-	return tk.Token{
-		LineNumber:    ln,
-		TabNumber:     tab,
-		BracketNumber: tkzr.BracketCountRunner,
-		SymbolicName:  symbolicName,
-		RuleName:      ruleName,
-		Text:          str,
-	}
+func (tkzr *Tokenizer) Index() int {
+	return tkzr.currentIndex
 }
 
-func (tkzr *Tokenizer) splitIntoNewLines(s string) []tk.Token {
-	lines := strings.Split(s, "\n")
-	Tokens := make([]tk.Token, 0)
-	for i := 0; i < len(lines); i++ {
-		if lines[i] != "" {
-			tabNumber, noTabText := tkzr.getNumberOfAndRemoveTabs(lines[i])
-			Tokens = append(Tokens, tk.CreateUnidentifiedToken(noTabText, i+1, tabNumber, -1))
-		}
-	}
-	return Tokens
+func (tkzr *Tokenizer) IndexInBound() bool {
+	return tkzr.DetermineIfIndexInBound(tkzr.Index())
 }
 
-func (tkzr *Tokenizer) getNumberOfAndRemoveTabs(text string) (int, string) {
+func (tkzr *Tokenizer) DetermineIfIndexInBound(index int) bool {
+	return index < len(*tkzr.Text)
+}
 
-	// So, typically, 4 spaces == 1 tab
-	// space in ascii is 32
-	// tab in ascii is 9
-	// newline is 10
-	tabs := 0
-	for i := 0; i < len(text); i++ {
-		if i+4 < len(text) {
-			if text[0:len(tkzr.SpaceSizeString)] == tkzr.SpaceSizeString { // NUMBER OF SPACES FOR TAB COUNT
-				text = text[4:]
-				tabs++
-			} else if (int)(text[i]) == 9 && tkzr.AllowTabs { // if it is the tab character
-				tabs++
-				text = text[1:]
-			} else {
-				break
-			}
-		} else if (int)(text[i]) == 9 && tkzr.AllowTabs { // if it is the tab character
-			tabs++
-			text = text[1:]
+func (tkzr *Tokenizer) applyFunctionUntilFailureTokenCreation(BooleanEndFunction func(tkzr *Tokenizer) bool, symbolicName string) *tk.Token {
+	lineNumber := tkzr.currentLineNumber
+	tabLevel := tkzr.currentTabLevel
+	tokenText := ""
+	for BooleanEndFunction(tkzr) {
+		tokenText += string(tkzr.CurrentChar())
+		tkzr.IncrementIndex()
+	}
+	tokenText = tkzr.StartInfo + tokenText + tkzr.EndInfo
+	finalToken := tk.CreateUnidentifiedToken(tokenText, lineNumber, tabLevel)
+	finalToken.SetValues("OTHER", symbolicName)
+	return &finalToken
+}
+
+func whiteSpaceStartFunction(tkzr *Tokenizer) bool {
+	return util.IsWhitespaceCharacter(tkzr.CurrentChar())
+}
+
+func whiteSpaceEndFunction(tkzr *Tokenizer) bool {
+	return util.IsWhitespaceCharacter(tkzr.CurrentChar())
+}
+
+func (tkzr *Tokenizer) IncrementIndex() {
+	tkzr.currentIndex++
+	if tkzr.CurrentChar() == '\n' { // Encounters a newline
+		if !tkzr.IgnoreNewLines && !tkzr.tempIgnoreChangesFromIncrement { // (potentially) adding the new line character token
+			newToken := tk.CreateUnidentifiedToken("\n", tkzr.currentLineNumber, tkzr.currentTabLevel)
+			newToken.SetValues("OTHER", "NEWLINE")
+			tkzr.CurrentScope.Push(&newToken)
+		}
+		tkzr.currentLineNumber++
+
+		// Gets the tab level for this line
+		gatheredWhitespace := tkzr.GatherWhitespace(!tkzr.tempIgnoreChangesFromIncrement)
+		numOfTabs := util.DetermineNumberOfTabs(gatheredWhitespace, tkzr.NumOfSpacesEquallyTab, true)
+		tkzr.currentTabLevel = numOfTabs
+		if !tkzr.IgnoreWhitespace && !tkzr.tempIgnoreChangesFromIncrement {
+			newToken := tk.CreateUnidentifiedToken(gatheredWhitespace, tkzr.currentLineNumber, tkzr.currentTabLevel)
+			newToken.SetValues("OTHER", "WHITESPACE")
+			tkzr.CurrentScope.Push(&newToken)
+		}
+	}
+
+}
+
+func (tkzr *Tokenizer) GatherWhitespace(updateCurrentIndex bool) string {
+	gatheredWhitespace := ""
+	index := tkzr.currentIndex
+	var char rune
+	for tkzr.DetermineIfIndexInBound(index) {
+		char = tkzr.GetChar(index)
+		if util.IsWhitespaceCharacter(char) {
+			gatheredWhitespace += string(char)
 		} else {
 			break
 		}
+		index++
 	}
-
-	return tabs, text
+	if updateCurrentIndex {
+		tkzr.currentIndex = index
+	}
+	return gatheredWhitespace
 }
 
-func (tkzr *Tokenizer) removeCommentsAndStrings(text string) string {
-	lengthOfText := len(text)
-	removeParts := make([][]int, 0)
-	skip := false
-
-	for i := 0; i < lengthOfText; { // Removes comments and strings
-		foundItem, lookForThisString := tkzr.StringAndCommentFinder(&text, i)
-
-		if foundItem {
-			initialIndex := i
-			endex := -1
-			i++
-
-			for endex == -1 && i+len(lookForThisString) < lengthOfText {
-				selectionOfText := text[i : i+len(lookForThisString)]
-				if tkzr.StringAndCommentEnder(&text, selectionOfText, lookForThisString, i) {
-					endex = i + len(lookForThisString)
-				}
-				i++
-			}
-
-			skip = true
-			if endex == -1 {
-				endex = lengthOfText
-				skip = false
-			}
-
-			item := []int{initialIndex, endex}
-			removeParts = append(removeParts, item)
-		}
-
-		if skip {
-			skip = false
-		} else {
-			i++
-		}
-	}
-
-	for i := len(removeParts) - 1; i >= 0; i-- {
-		removedPortion := text[removeParts[i][0]:removeParts[i][1]]
-		numberOfNewlines := strings.Count(removedPortion, "\n")
-		addNewLines := ""
-		for i := 0; i < numberOfNewlines; i++ {
-			addNewLines += "\n"
-		}
-
-		text = text[:removeParts[i][0]] + addNewLines + text[removeParts[i][1]:]
-
-	}
-	return text
+func (tkzr *Tokenizer) CurrentChar() rune {
+	return tkzr.GetChar(tkzr.currentIndex)
 }
 
-func PrintOutTextOfTokens(tokens []tk.Token) {
-	currentLine := 0
-	for i := 0; i < len(tokens); i++ {
-		t := tokens[i]
-		if t.LineNumber != currentLine {
-			fmt.Println()
-			spacesStr := fmt.Sprintf("%d", t.LineNumber)
-			spacesNum := 6 - len(spacesStr)
-			for i := 0; i < spacesNum; i++ {
-				spacesStr += " "
-			}
-			fmt.Print(spacesStr + "| ")
-			printNumberOfTabs(t.TabNumber)
-			currentLine = t.LineNumber
-		}
-		fmt.Print(t.Text + " ")
+func (tkzr *Tokenizer) GetChar(index int) rune {
+	return rune((*tkzr.Text)[index])
+}
+
+func (tkzr *Tokenizer) initSpaceSizeString() {
+	tkzr.spaceSizeString = ""
+	for i := 0; i < tkzr.NumOfSpacesEquallyTab; i++ {
+		tkzr.spaceSizeString += " "
 	}
 }
 
-func printNumberOfTabs(n int) {
-	for i := 0; i < n; i++ {
-		fmt.Print("    ")
-	}
+func (tkzr *Tokenizer) createKeywordToken(keywordString string) *tk.Token {
+	newToken := tk.CreateUnidentifiedToken(keywordString, tkzr.currentLineNumber, tkzr.currentTabLevel)
+	newToken.SetValues("KEYWORD", tkzr.identifyKeyword(keywordString))
+	return &newToken
 }
 
-func PrintAllTokens(FinalTokens []tk.Token) {
-	for i := 0; i < len(FinalTokens); i++ {
-		FinalTokens[i].PrintToken()
+func (tkzr *Tokenizer) createSymbolToken(symbolString string) *tk.Token {
+	newToken := tk.CreateUnidentifiedToken(symbolString, tkzr.currentLineNumber, tkzr.currentTabLevel)
+	newToken.SetValues("SYMBOL", tkzr.identifySymbol(symbolString))
+	return &newToken
+}
+
+func (tkzr *Tokenizer) identifyKeyword(keywordString string) string {
+	symbolicName := ""
+	for i := 0; i < len(tkzr.Keywords); i++ {
+		if keywordString == tkzr.Keywords[i] {
+			symbolicName = strings.ToUpper(tkzr.Keywords[i])
+		}
 	}
+	if symbolicName == "" {
+		symbolicName = "IDENTIFIER"
+	}
+	return symbolicName
+}
+
+func (tkzr *Tokenizer) identifySymbol(symbol string) string {
+	symbolicName := ""
+	for i := 0; i < len(tkzr.Symbols); i++ {
+		if symbol == tkzr.Symbols[i][0] {
+			symbolicName = strings.ToUpper(tkzr.Symbols[i][1])
+		}
+	}
+	if symbolicName == "" {
+		symbolicName = "UNKNOWN"
+	}
+	return symbolicName
 }

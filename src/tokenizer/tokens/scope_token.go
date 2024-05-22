@@ -24,6 +24,7 @@ type ScopeObj struct {
 	tokenList    []*Token
 	scopeIndices []int
 	size         int
+	parentScope  *ScopeObj
 }
 
 // InitScope
@@ -37,6 +38,7 @@ func InitScope(lists ...[]*Token) ScopeObj {
 		tokenList:    make([]*Token, 0),
 		scopeIndices: make([]int, 0),
 		size:         0,
+		parentScope:  nil,
 	}
 
 	for _, list := range lists {
@@ -74,13 +76,12 @@ func InitScopeToken(scopes ...*ScopeObj) *Token {
 	}
 
 	return &Token{
-		LineNumber:    0,
-		TabNumber:     0,
-		BracketNumber: 0,
-		SymbolicName:  "",
-		RuleName:      SCOPE_TOKEN_STIRNG,
-		Text:          "",
-		scopeToken:    &providedScope,
+		LineNumber:   0,
+		TabNumber:    0,
+		SymbolicName: "",
+		RuleName:     SCOPE_TOKEN_STIRNG,
+		Text:         "",
+		scopeToken:   &providedScope,
 	}
 }
 
@@ -113,6 +114,14 @@ func (so *ScopeObj) SetType(typeString string) {
 // Returns the number of scopes found directly in this scope obj
 func (so *ScopeObj) GetNumberOfScopes() int {
 	return len(so.scopeIndices)
+}
+
+func (so *ScopeObj) SetScopeParent(newParent *ScopeObj) {
+	so.parentScope = newParent
+}
+
+func (so *ScopeObj) GetScopeParent() *ScopeObj {
+	return so.parentScope
 }
 
 // Concatenate
@@ -216,6 +225,7 @@ func (so *ScopeObj) Insert(tt *Token, index int) error {
 		if index != so.size-1 {
 			so.fixScopeIndices()
 		} else if tt.ValidScopeToken() {
+			tt.GetScopeToken().SetScopeParent(so) // TODO: Ensure this works... it should since it is using pointers but just like make sure
 			so.scopeIndices = append(so.scopeIndices, index)
 		}
 		return nil

@@ -48,7 +48,7 @@ func CreateTestTokenArray(idTest string, size int, numOfScopes int, recursiveSte
 			tempToken.Text = idTest
 			scopePosition += scopeOffset
 		} else {
-			tempToken = tokens.CreateUnidentifiedToken(idTest, i, i*2, i*3)
+			tempToken = tokens.CreateUnidentifiedToken(idTest, i, i*2)
 			tempRuleName := "SYMBOL"
 			tempSymbolicName := "PERIOD"
 			rndNum := rand.Intn(100)
@@ -151,7 +151,7 @@ func Test_Push(t *testing.T) {
 	tokenArray := CreateTestTokenArray("testToken", 10, 0, 0, 1)
 	exampleScope := tokens.InitScope(tokenArray)
 
-	pushToken := tokens.CreateUnidentifiedToken("if", 1, 1, 1)
+	pushToken := tokens.CreateUnidentifiedToken("if", 1, 1)
 	pushToken.SetValues("KEYWORD", "IF")
 	exampleScope.Push(&pushToken)
 
@@ -164,13 +164,13 @@ func Test_Insert(t *testing.T) {
 	tokenArray := CreateTestTokenArray("testToken", 10, 0, 0, 1)
 	exampleScope := tokens.InitScope(tokenArray)
 
-	pushToken := tokens.CreateUnidentifiedToken("if", 1, 1, 1)
+	pushToken := tokens.CreateUnidentifiedToken("if", 1, 1)
 	pushToken.SetValues("KEYWORD", "IF")
 	err := exampleScope.Insert(&pushToken, 0)
 
 	assert.Nil(t, err)
 
-	pushToken2 := tokens.CreateUnidentifiedToken("else", 1, 1, 1)
+	pushToken2 := tokens.CreateUnidentifiedToken("else", 1, 1)
 	pushToken2.SetValues("KEYWORD", "ELSE")
 	err = exampleScope.Insert(&pushToken2, 0)
 
@@ -198,7 +198,7 @@ func Test_Pop(t *testing.T) {
 	tokenArray := CreateTestTokenArray("testToken", 4, 0, 0, 1)
 	exampleScope := tokens.InitScope(tokenArray)
 
-	pushToken := tokens.CreateUnidentifiedToken("if", 1, 1, 1)
+	pushToken := tokens.CreateUnidentifiedToken("if", 1, 1)
 	pushToken.SetValues("KEYWORD", "IF")
 	exampleScope.Push(&pushToken)
 
@@ -221,7 +221,7 @@ func Test_Front(t *testing.T) {
 	tokenArray := CreateTestTokenArray("testToken", 4, 0, 0, 1)
 	exampleScope := tokens.InitScope(tokenArray)
 
-	pushToken := tokens.CreateUnidentifiedToken("if", 1, 1, 1)
+	pushToken := tokens.CreateUnidentifiedToken("if", 1, 1)
 	pushToken.SetValues("KEYWORD", "IF")
 	exampleScope.Push(&pushToken)
 
@@ -243,15 +243,15 @@ func Test_Front_Nothing(t *testing.T) {
 func Test_Delete_Front(t *testing.T) {
 	exampleScope := tokens.InitScope()
 
-	pushToken := tokens.CreateUnidentifiedToken("if", 1, 1, 1)
+	pushToken := tokens.CreateUnidentifiedToken("if", 1, 1)
 	pushToken.SetValues("KEYWORD", "IF")
 	exampleScope.Push(&pushToken)
 
-	pushToken2 := tokens.CreateUnidentifiedToken("else", 1, 1, 1)
+	pushToken2 := tokens.CreateUnidentifiedToken("else", 1, 1)
 	pushToken2.SetValues("KEYWORD", "ELSE")
 	exampleScope.Push(&pushToken2)
 
-	pushToken3 := tokens.CreateUnidentifiedToken("{", 1, 1, 1)
+	pushToken3 := tokens.CreateUnidentifiedToken("{", 1, 1)
 	pushToken3.SetValues("SYMBOL", "RBRACKET")
 	exampleScope.Push(&pushToken3)
 
@@ -273,15 +273,15 @@ func Test_Delete_Front(t *testing.T) {
 func Test_Delete_Middle(t *testing.T) {
 	exampleScope := tokens.InitScope()
 
-	pushToken := tokens.CreateUnidentifiedToken("if", 1, 1, 1)
+	pushToken := tokens.CreateUnidentifiedToken("if", 1, 1)
 	pushToken.SetValues("KEYWORD", "IF")
 	exampleScope.Push(&pushToken)
 
-	pushToken2 := tokens.CreateUnidentifiedToken("else", 1, 1, 1)
+	pushToken2 := tokens.CreateUnidentifiedToken("else", 1, 1)
 	pushToken2.SetValues("KEYWORD", "ELSE")
 	exampleScope.Push(&pushToken2)
 
-	pushToken3 := tokens.CreateUnidentifiedToken("{", 1, 1, 1)
+	pushToken3 := tokens.CreateUnidentifiedToken("{", 1, 1)
 	pushToken3.SetValues("SYMBOL", "RBRACKET")
 	exampleScope.Push(&pushToken3)
 
@@ -304,15 +304,15 @@ func Test_Delete_Middle(t *testing.T) {
 func Test_Delete_End(t *testing.T) {
 	exampleScope := tokens.InitScope()
 
-	pushToken := tokens.CreateUnidentifiedToken("if", 1, 1, 1)
+	pushToken := tokens.CreateUnidentifiedToken("if", 1, 1)
 	pushToken.SetValues("KEYWORD", "IF")
 	exampleScope.Push(&pushToken)
 
-	pushToken2 := tokens.CreateUnidentifiedToken("else", 1, 1, 1)
+	pushToken2 := tokens.CreateUnidentifiedToken("else", 1, 1)
 	pushToken2.SetValues("KEYWORD", "ELSE")
 	exampleScope.Push(&pushToken2)
 
-	pushToken3 := tokens.CreateUnidentifiedToken("{", 1, 1, 1)
+	pushToken3 := tokens.CreateUnidentifiedToken("{", 1, 1)
 	pushToken3.SetValues("SYMBOL", "RBRACKET")
 	exampleScope.Push(&pushToken3)
 

@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
+	"unicode"
 )
 
 func FormatStringToSize(s string, size int) string {
@@ -46,4 +48,22 @@ func HideButAFewCharsOfInformation(str string, reveal int) string {
 	}
 	lastBit := str[len(str)-reveal : len(str)]
 	return stars + lastBit
+}
+
+func IsAlphanumericCharacter(c rune) bool {
+	return unicode.IsLetter(c) || unicode.IsDigit(c)
+}
+
+func IsWhitespaceCharacter(c rune) bool {
+	return c == ' ' || c == '\t'
+}
+
+func DetermineNumberOfTabs(whitespaceString string, numOfSpacesEquallyTabs int, ignoreTabCharacters bool) int {
+	numberOfTabs := strings.Count(whitespaceString, " ")
+	numberOfTabs = numberOfTabs / numOfSpacesEquallyTabs
+
+	if !ignoreTabCharacters {
+		numberOfTabs += strings.Count(whitespaceString, "\t")
+	}
+	return numberOfTabs
 }
