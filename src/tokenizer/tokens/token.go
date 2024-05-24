@@ -3,6 +3,7 @@ package tokens
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"tp/src/util"
 )
 
@@ -52,4 +53,19 @@ func (t *Token) GetScopeToken() *ScopeObj {
 		util.Error(err.Error(), err)
 	}
 	return t.scopeToken
+}
+
+func (t *Token) ToJsonString(tabLevel int) string {
+	symName := strings.ReplaceAll(t.SymbolicName, "\"", "\\\"")
+	rulName := strings.ReplaceAll(t.RuleName, "\"", "\\\"")
+	txtName := strings.ReplaceAll(t.Text, "\"", "\\\"")
+
+	tabString := ""
+	for i := 0; i < tabLevel; i++ {
+		tabString += "\t"
+	}
+
+	tempString := fmt.Sprintf("{\n\t\"LineNumber\": %d,\n\t\"TabNumber\": %d,\n\t\"SymbolicName\": \"%s\",\n\t\"RuleName\": \"%s\",\n\t\"Text\": \"%s\"\n}", t.LineNumber, t.TabNumber, symName, rulName, txtName)
+
+	return strings.ReplaceAll(tempString, "\n", "\n"+tabString)
 }

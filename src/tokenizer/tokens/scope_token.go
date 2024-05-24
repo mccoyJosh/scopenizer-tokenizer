@@ -3,6 +3,7 @@ package tokens
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"tp/src/util"
 )
 
@@ -363,4 +364,55 @@ func (so *ScopeObj) PrintTexts() {
 		fmt.Print(so.tokenList[i].Text + " ")
 	}
 	fmt.Println()
+}
+
+func (so *ScopeObj) ToCustomTokenArrayTypeString(tag string) string {
+	str := "{\n"
+	str += fmt.Sprintf("\"%s\":\n", tag)
+	str += so.toCustomTokenArrayTypeStringHelper(1)
+	str += "\n}"
+
+	return strings.ReplaceAll(str, "\t", "    ")
+
+}
+
+func (so *ScopeObj) toCustomTokenArrayTypeStringHelper(tabLevel int) string {
+	outputStr := ""
+	tabString := ""
+
+	for i := 0; i < tabLevel; i++ {
+		tabString += "\t"
+	}
+
+	outputStr += "[\n"
+	outputStr += tabString
+
+	for i := 0; i < so.Size(); i++ {
+		token, err := so.At(i)
+		if err != nil {
+			util.Error("ToCustomTokenArrayTypeString method produced index out of bounds, which should never happen... look into size var being messed up somewhere", err)
+			panic(err)
+		}
+
+		if token.ValidScopeToken() {
+			outputStr += token.scopeToken.toCustomTokenArrayTypeStringHelper(tabLevel + 1)
+		} else {
+			outputStr += token.ToJsonString(tabLevel)
+		}
+		if i != so.Size()-1 {
+			outputStr += ","
+		}
+		outputStr += "\n"
+		if i != so.Size()-1 {
+			outputStr += tabString
+		} else {
+			outputStr += tabString[0 : len(tabString)-1]
+		}
+	}
+	outputStr += "]"
+	if tabLevel == 0 {
+		outputStr += "}"
+	}
+
+	return outputStr
 }

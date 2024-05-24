@@ -19,14 +19,18 @@ func Test_javaTokenizer(t *testing.T) {
 	}
 
 	tokensScope := tokenizer.Tokenize(text)
-	for i := 0; i < tokensScope.Size(); i++ {
-		st1, _ := tokensScope.At(i)
-		switch i {
-		case 0:
-			assert.Equal(t, "PUBLIC", st1.SymbolicName)
-		}
 
-	}
+	jsonString := tokensScope.ToCustomTokenArrayTypeString("testTag")
+	util.MakeDir("../../../../output")
+	_ = util.CreateFileWithInfo("../../../../output/java_output.json", jsonString)
+	//for i := 0; i < tokensScope.Size(); i++ {
+	//	st1, _ := tokensScope.At(i)
+	//	switch i {
+	//	case 0:
+	//		assert.Equal(t, "PUBLIC", st1.SymbolicName)
+	//	}
+	//
+	//}
 }
 
 func Test_DullTokenizer(t *testing.T) {

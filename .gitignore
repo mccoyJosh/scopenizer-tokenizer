@@ -22,6 +22,7 @@ tokenizeAndParse.iml
 *.dll
 
 # Fortran module files
+output
 
 *.smod
 

@@ -236,10 +236,6 @@ func (tkzr *Tokenizer) Tokenize(text string) tk.ScopeObj {
 	tkzr.currentScope = &finalScope
 
 	for tkzr.IndexInBound() {
-		if tkzr.Index() == tkzr.TextSize()-4 {
-			fmt.Println(string(tkzr.CurrentChar()))
-		}
-
 		foundString := tkzr.StringStartFunction(tkzr)
 		foundComment := tkzr.CommentStartFunction(tkzr)
 		foundStartScope := tkzr.ScopeStartFunction(tkzr)
