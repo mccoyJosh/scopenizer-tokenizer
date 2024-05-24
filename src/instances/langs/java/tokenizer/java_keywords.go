@@ -1,6 +1,6 @@
 package javaTokenizer
 
-var Keywords = []string{
+var keywords = []string{
 	"abstract",
 	"assert",
 	"boolean",

@@ -1,6 +1,6 @@
 package javaTokenizer
 
-var Symbols = [][]string{
+var symbols = [][]string{
 	{"\"", "DoubleQ"},
 	{"'", "SingleQ"},
 	{":", "Colon"},
@@ -21,5 +21,6 @@ var Symbols = [][]string{
 	{")", "RParen"},
 	{"[", "LBracket"},
 	{"]", "RBracket"},
-	{" ", "Space"}, // Maybe remove this and ignore spaces, essentially (split by spaces)
+	{"{", "LCurly"},
+	{"}", "RCurly"},
 }
