@@ -1,7 +1,9 @@
 package javaTokenizer
 
 import (
+	"strconv"
 	tz "tp/src/tokenizer"
+	"tp/src/util"
 	"unicode"
 )
 
@@ -24,6 +26,7 @@ func GetJavaTokenizer() *tz.Tokenizer {
 
 						tkzr.StartInfo = "//"
 						tkzr.EndInfo = "\n"
+						tkzr.FunctionSharedInfo = strconv.Itoa(tkzr.GetCurrentLineNumber())
 						return true
 					}
 					if nextChar == '*' {
@@ -39,19 +42,25 @@ func GetJavaTokenizer() *tz.Tokenizer {
 		},
 		// Comment End
 		func(tkzr *tz.Tokenizer) bool {
-			if len(tkzr.EndInfo) > 1 {
-				currentIndex := tkzr.Index()
-				if tkzr.TextSize() > currentIndex+1 {
-					nextTwoCharacter, err := tkzr.TextRange(currentIndex, currentIndex+2)
-					if err != nil {
-						return false
-					}
-					if nextTwoCharacter == tkzr.EndInfo {
-						return true
-					}
+			if rune(tkzr.EndInfo[0]) == '\n' {
+				num, err := strconv.Atoi(tkzr.FunctionSharedInfo)
+				if err != nil {
+					util.Error("FunctionSharedInfo in CommentEndFunction was not a line number", err)
+					panic(err)
+				}
+				return tkzr.GetCurrentLineNumber() != num
+			}
+			currentIndex := tkzr.Index()
+			if tkzr.TextSize() > currentIndex+1 {
+				nextTwoCharacter, err := tkzr.TextRange(currentIndex, currentIndex+2)
+				if err != nil {
+					return false
+				}
+				if nextTwoCharacter == tkzr.EndInfo {
+					return true
 				}
 			}
-			return tkzr.CurrentChar() == rune(tkzr.EndInfo[0])
+			return false
 		},
 	)
 	tkzr.ConfigureScope(

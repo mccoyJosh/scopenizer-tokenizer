@@ -69,6 +69,7 @@ type Tokenizer struct {
 	potentialKeyword               string
 	StartInfo                      string
 	EndInfo                        string
+	FunctionSharedInfo             string
 	currentIndex                   int
 	currentScope                   *tk.ScopeObj
 
@@ -110,6 +111,7 @@ func GenerateDefaultTokenizerObject() Tokenizer {
 		potentialKeyword:               "",
 		StartInfo:                      "",
 		EndInfo:                        "",
+		FunctionSharedInfo:             "",
 		currentIndex:                   0,
 
 		currentScope:       nil,
@@ -220,6 +222,7 @@ func (tkzr *Tokenizer) initTempVariables(text *string) {
 	tkzr.Text = text
 	tkzr.StartInfo = ""
 	tkzr.EndInfo = ""
+	tkzr.FunctionSharedInfo = ""
 }
 
 func (tkzr *Tokenizer) Tokenize(text string) tk.ScopeObj {
@@ -244,7 +247,6 @@ func (tkzr *Tokenizer) Tokenize(text string) tk.ScopeObj {
 
 		if foundString || foundComment || foundStartScope || foundEndScope {
 			tkzr.tempIgnoreChangesFromIncrement = true
-			tkzr.IncrementIndex() // TODO: determine if this is necessary or should be left up yo anonymous functions
 
 			if tkzr.potentialKeyword != "" {
 				tkzr.currentScope.Push(tkzr.createKeywordToken(tkzr.potentialKeyword))
@@ -258,11 +260,13 @@ func (tkzr *Tokenizer) Tokenize(text string) tk.ScopeObj {
 			//	}
 			//}
 			if foundString {
+				tkzr.IncrementIndex()
 				resultingToken := tkzr.applyFunctionUntilFailureTokenCreation(tkzr.StringEndFunction, "STRING")
 				if tkzr.IncludeStrings {
 					tkzr.currentScope.Push(resultingToken)
 				}
 			} else if foundComment {
+				tkzr.IncrementIndex()
 				resultingToken := tkzr.applyFunctionUntilFailureTokenCreation(tkzr.CommentEndFunction, "COMMENT")
 				if tkzr.IncludeComments {
 					tkzr.currentScope.Push(resultingToken)
@@ -284,6 +288,9 @@ func (tkzr *Tokenizer) Tokenize(text string) tk.ScopeObj {
 				}
 				postScopeToken := tkzr.createTokenType(tkzr.EndInfo)
 				tkzr.currentScope.Push(postScopeToken)
+			}
+			for i := 0; i < len(tkzr.EndInfo)-1; i++ {
+				tkzr.IncrementIndex() // TODO: Determine whether this is a good long term solution or should be left for anonymous functions to deal with
 			}
 			tkzr.tempIgnoreChangesFromIncrement = false
 		} else { // Not a scope identifier, not a comment, not a string
@@ -351,7 +358,7 @@ func (tkzr *Tokenizer) applyFunctionUntilFailureTokenCreation(BooleanEndFunction
 	lineNumber := tkzr.currentLineNumber
 	tabLevel := tkzr.currentTabLevel
 	tokenText := ""
-	for BooleanEndFunction(tkzr) {
+	for !BooleanEndFunction(tkzr) && tkzr.IndexInBound() {
 		tokenText += string(tkzr.CurrentChar())
 		tkzr.IncrementIndex()
 	}
@@ -359,6 +366,10 @@ func (tkzr *Tokenizer) applyFunctionUntilFailureTokenCreation(BooleanEndFunction
 	finalToken := tk.CreateUnidentifiedToken(tokenText, lineNumber, tabLevel)
 	finalToken.SetValues("OTHER", symbolicName)
 	return &finalToken
+}
+
+func (tkzr *Tokenizer) GetCurrentLineNumber() int {
+	return tkzr.currentLineNumber
 }
 
 func whiteSpaceStartFunction(tkzr *Tokenizer) bool {

@@ -60,6 +60,10 @@ func (t *Token) ToJsonString(tabLevel int) string {
 	rulName := strings.ReplaceAll(t.RuleName, "\"", "\\\"")
 	txtName := strings.ReplaceAll(t.Text, "\"", "\\\"")
 
+	symName = strings.ReplaceAll(symName, "\n", "\\n")
+	rulName = strings.ReplaceAll(rulName, "\n", "\\n")
+	txtName = strings.ReplaceAll(txtName, "\n", "\\n")
+
 	tabString := ""
 	for i := 0; i < tabLevel; i++ {
 		tabString += "\t"
