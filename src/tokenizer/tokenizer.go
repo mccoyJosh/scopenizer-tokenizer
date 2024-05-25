@@ -38,7 +38,7 @@ func CreateDullTokenizer() *Tokenizer {
 		},
 		// Scope End
 		func(tkzr *Tokenizer) bool {
-			return true
+			return false
 		},
 	)
 	tkzr.ConfigureString(
@@ -50,7 +50,7 @@ func CreateDullTokenizer() *Tokenizer {
 		},
 		// String End
 		func(tkzr *Tokenizer) bool {
-			return false
+			return true
 		},
 	)
 	return &tkzr
@@ -243,7 +243,6 @@ func (tkzr *Tokenizer) Tokenize(text string) tk.ScopeObj {
 		foundComment := tkzr.CommentStartFunction(tkzr)
 		foundStartScope := tkzr.ScopeStartFunction(tkzr)
 		foundEndScope := tkzr.ScopeEndFunction(tkzr)
-		//foundWhiteSpace := whiteSpaceStartFunction(tkzr)
 
 		if foundString || foundComment || foundStartScope || foundEndScope {
 			tkzr.tempIgnoreChangesFromIncrement = true
@@ -252,13 +251,6 @@ func (tkzr *Tokenizer) Tokenize(text string) tk.ScopeObj {
 				tkzr.currentScope.Push(tkzr.createKeywordToken(tkzr.potentialKeyword))
 				tkzr.potentialKeyword = ""
 			}
-
-			//if foundWhiteSpace {
-			//	resultingToken := tkzr.applyFunctionUntilFailureTokenCreation(whiteSpaceEndFunction, "WHITESPACE")
-			//	if !tkzr.IgnoreWhitespace {
-			//		tkzr.currentScope.Push(resultingToken)
-			//	}
-			//}
 			if foundString {
 				resultingToken := tkzr.applyFunctionUntilFailureTokenCreation(tkzr.StringEndFunction, "STRING")
 				if tkzr.IncludeStrings {
@@ -374,14 +366,6 @@ func (tkzr *Tokenizer) applyFunctionUntilFailureTokenCreation(BooleanEndFunction
 
 func (tkzr *Tokenizer) GetCurrentLineNumber() int {
 	return tkzr.currentLineNumber
-}
-
-func whiteSpaceStartFunction(tkzr *Tokenizer) bool {
-	return util.IsWhitespaceCharacter(tkzr.CurrentChar())
-}
-
-func whiteSpaceEndFunction(tkzr *Tokenizer) bool {
-	return util.IsWhitespaceCharacter(tkzr.CurrentChar())
 }
 
 func (tkzr *Tokenizer) IncrementIndex() {

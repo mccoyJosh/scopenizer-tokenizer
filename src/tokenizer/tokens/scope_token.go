@@ -366,17 +366,17 @@ func (so *ScopeObj) PrintTexts() {
 	fmt.Println()
 }
 
-func (so *ScopeObj) ToCustomTokenArrayTypeString(tag string) string {
+func (so *ScopeObj) ToJsonString(tag string) string {
 	str := "{\n"
 	str += fmt.Sprintf("\"%s\":\n", tag)
-	str += so.toCustomTokenArrayTypeStringHelper(1)
+	str += so.toJsonHelper(1)
 	str += "\n}"
 
 	return strings.ReplaceAll(str, "\t", "    ")
 
 }
 
-func (so *ScopeObj) toCustomTokenArrayTypeStringHelper(tabLevel int) string {
+func (so *ScopeObj) toJsonHelper(tabLevel int) string {
 	outputStr := ""
 	tabString := ""
 
@@ -395,7 +395,7 @@ func (so *ScopeObj) toCustomTokenArrayTypeStringHelper(tabLevel int) string {
 		}
 
 		if token.ValidScopeToken() {
-			outputStr += token.scopeToken.toCustomTokenArrayTypeStringHelper(tabLevel + 1)
+			outputStr += token.scopeToken.toJsonHelper(tabLevel + 1)
 		} else {
 			outputStr += token.ToJsonString(tabLevel)
 		}
