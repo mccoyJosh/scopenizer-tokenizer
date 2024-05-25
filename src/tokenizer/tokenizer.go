@@ -260,13 +260,11 @@ func (tkzr *Tokenizer) Tokenize(text string) tk.ScopeObj {
 			//	}
 			//}
 			if foundString {
-				tkzr.IncrementIndex()
 				resultingToken := tkzr.applyFunctionUntilFailureTokenCreation(tkzr.StringEndFunction, "STRING")
 				if tkzr.IncludeStrings {
 					tkzr.currentScope.Push(resultingToken)
 				}
 			} else if foundComment {
-				tkzr.IncrementIndex()
 				resultingToken := tkzr.applyFunctionUntilFailureTokenCreation(tkzr.CommentEndFunction, "COMMENT")
 				if tkzr.IncludeComments {
 					tkzr.currentScope.Push(resultingToken)
@@ -356,9 +354,15 @@ func (tkzr *Tokenizer) DetermineIfIndexInBound(index int) bool {
 
 func (tkzr *Tokenizer) applyFunctionUntilFailureTokenCreation(BooleanEndFunction func(tkzr *Tokenizer) bool, symbolicName string) *tk.Token {
 	lineNumber := tkzr.currentLineNumber
+	tempLineNumber := lineNumber
 	tabLevel := tkzr.currentTabLevel
 	tokenText := ""
+	tkzr.IncrementIndex() // TODO: This should skip the char which initialed this function to be applied
 	for !BooleanEndFunction(tkzr) && tkzr.IndexInBound() {
+		if tkzr.currentLineNumber != tempLineNumber {
+			tokenText += "\n"
+			tempLineNumber = tkzr.currentLineNumber
+		}
 		tokenText += string(tkzr.CurrentChar())
 		tkzr.IncrementIndex()
 	}
