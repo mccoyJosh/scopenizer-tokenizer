@@ -7,10 +7,14 @@ import (
 
 func PrintLog(logType string, message string) {
 	fmt.Printf("%s: ", logType)
+	PrintTime()
+	fmt.Printf("\tNOTE: %s\n", message)
+}
+
+func PrintTime() {
 	t := time.Now()
 	fmt.Printf("%d/%d/%d  ", t.Year(), t.Month(), t.Day())
 	fmt.Printf("%d:%d:%d.%d ", t.Hour(), t.Minute(), t.Second(), t.Nanosecond())
-	fmt.Printf("\tNOTE: %s\n", message)
 }
 
 func Fatal(msg string) {

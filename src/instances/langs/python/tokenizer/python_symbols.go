@@ -1,0 +1,26 @@
+package pythonTokenizer
+
+var symbols = [][]string{
+	{"\"", "DoubleQ"},
+	{"'", "SingleQ"},
+	{":", "Colon"},
+	{",", "Comma"},
+	{".", "Period"},
+	{"*", "Star"},
+	{"+", "Addition"},
+	{"-", "Subtraction"},
+	{"/", "ForwardSlash"},
+	{"<", "LessThan"},
+	{">", "GreaterThan"},
+	{"\\", "Backslash"},
+	{"?", "Question"},
+	{";", "SemiColon"},
+	{"^", "Exponent"},
+	{"=", "Equal"},
+	{"(", "LParen"},
+	{")", "RParen"},
+	{"[", "LBracket"},
+	{"]", "RBracket"},
+	{"{", "LCurly"},
+	{"}", "RCurly"},
+}

@@ -72,6 +72,7 @@ type Tokenizer struct {
 	FunctionSharedInfo             string
 	currentIndex                   int
 	currentScope                   *tk.ScopeObj
+	skipIncrement                  bool
 
 	// Scope Info
 	ScopeStartFunction func(tkzr *Tokenizer) bool
@@ -113,6 +114,7 @@ func GenerateDefaultTokenizerObject() Tokenizer {
 		EndInfo:                        "",
 		FunctionSharedInfo:             "",
 		currentIndex:                   0,
+		skipIncrement:                  false,
 
 		currentScope:       nil,
 		ScopeStartFunction: nil,
@@ -239,11 +241,11 @@ func (tkzr *Tokenizer) Tokenize(text string) tk.ScopeObj {
 	tkzr.currentScope = &finalScope
 
 	for tkzr.IndexInBound() {
+		tkzr.skipIncrement = false
 		foundString := tkzr.StringStartFunction(tkzr)
 		foundComment := tkzr.CommentStartFunction(tkzr)
 		foundStartScope := tkzr.ScopeStartFunction(tkzr)
 		foundEndScope := tkzr.ScopeEndFunction(tkzr)
-
 		if foundString || foundComment || foundStartScope || foundEndScope {
 			tkzr.tempIgnoreChangesFromIncrement = true
 
@@ -276,15 +278,21 @@ func (tkzr *Tokenizer) Tokenize(text string) tk.ScopeObj {
 				} else {
 					tkzr.currentScope = parentScope
 				}
-				postScopeToken := tkzr.createTokenType(tkzr.EndInfo)
-				tkzr.currentScope.Push(postScopeToken)
+				if tkzr.EndInfo != "" {
+					postScopeToken := tkzr.createTokenType(tkzr.EndInfo)
+					tkzr.currentScope.Push(postScopeToken)
+				}
 			}
 			for i := 0; i < len(tkzr.EndInfo)-1; i++ {
-				tkzr.IncrementIndex() // TODO: Determine whether this is a good long term solution or should be left for anonymous functions to deal with
+				if !tkzr.skipIncrement {
+					tkzr.IncrementIndex() // TODO: Determine whether this is a good long term solution or should be left for anonymous functions to deal with
+				}
 			}
+			tkzr.StartInfo = ""
+			tkzr.EndInfo = ""
 			tkzr.tempIgnoreChangesFromIncrement = false
 		} else { // Not a scope identifier, not a comment, not a string
-			char := text[tkzr.Index()]
+			char := tkzr.CurrentChar()
 			if tkzr.IsKeywordCharacter(rune(char)) {
 				tkzr.potentialKeyword += string(char)
 			} else { // Found a symbol, which needs to be added and
@@ -300,6 +308,7 @@ func (tkzr *Tokenizer) Tokenize(text string) tk.ScopeObj {
 						tkzr.currentScope.Push(newSymbolToken)
 					}
 				} else if newSymbolToken.SymbolicName == "NEWLINE" {
+					tkzr.currentLineNumber++
 					if !tkzr.IgnoreWhitespace {
 						newSymbolToken.RuleName = "OTHER"
 						tkzr.currentScope.Push(newSymbolToken)
@@ -309,7 +318,9 @@ func (tkzr *Tokenizer) Tokenize(text string) tk.ScopeObj {
 				}
 			}
 		}
-		tkzr.IncrementIndex()
+		if !tkzr.skipIncrement {
+			tkzr.IncrementIndex()
+		}
 	}
 
 	if tkzr.potentialKeyword != "" { // TODO: SEE IF ONE LAST CHECK IS NECESSARY
@@ -318,6 +329,17 @@ func (tkzr *Tokenizer) Tokenize(text string) tk.ScopeObj {
 	}
 
 	return finalScope
+}
+
+func (tkzr *Tokenizer) PrintCharIndices() {
+	for i := 0; i < tkzr.TextSize(); i++ {
+		char := tkzr.GetChar(i)
+		fmt.Printf("%d\t:\t%d\n", i, int(char))
+	}
+}
+
+func (tkzr *Tokenizer) SkipIncrement() {
+	tkzr.skipIncrement = true
 }
 
 func (tkzr *Tokenizer) TextSize() int {
@@ -342,6 +364,10 @@ func (tkzr *Tokenizer) IndexInBound() bool {
 
 func (tkzr *Tokenizer) DetermineIfIndexInBound(index int) bool {
 	return index < len(*tkzr.Text)
+}
+
+func (tkzr *Tokenizer) GetCurrentTabLevel() int {
+	return tkzr.currentTabLevel
 }
 
 func (tkzr *Tokenizer) applyFunctionUntilFailureTokenCreation(BooleanEndFunction func(tkzr *Tokenizer) bool, symbolicName string) *tk.Token {
@@ -370,16 +396,17 @@ func (tkzr *Tokenizer) GetCurrentLineNumber() int {
 
 func (tkzr *Tokenizer) IncrementIndex() {
 	tkzr.currentIndex++
-	if tkzr.currentIndex < tkzr.TextSize() && tkzr.CurrentChar() == '\n' { // Encounters a newline
+	if tkzr.IndexInBound() && tkzr.CurrentChar() == '\n' { // Encounters a newline
 		if !tkzr.IgnoreNewLines && !tkzr.tempIgnoreChangesFromIncrement { // (potentially) adding the new line character token
 			newToken := tk.CreateUnidentifiedToken("\n", tkzr.currentLineNumber, tkzr.currentTabLevel)
 			newToken.SetValues("OTHER", "NEWLINE")
 			tkzr.currentScope.Push(&newToken)
 		}
 		tkzr.currentLineNumber++
+		tempIndex := tkzr.Index()
 
 		// Gets the tab level for this line
-		gatheredWhitespace := tkzr.GatherWhitespace(!tkzr.tempIgnoreChangesFromIncrement)
+		gatheredWhitespace := tkzr.gatherWhitespace(!tkzr.tempIgnoreChangesFromIncrement)
 		numOfTabs := util.DetermineNumberOfTabs(gatheredWhitespace, tkzr.NumOfSpacesEquallyTab, true)
 		tkzr.currentTabLevel = numOfTabs
 		if !tkzr.IgnoreWhitespace && !tkzr.tempIgnoreChangesFromIncrement {
@@ -387,14 +414,47 @@ func (tkzr *Tokenizer) IncrementIndex() {
 			newToken.SetValues("OTHER", "WHITESPACE")
 			tkzr.currentScope.Push(&newToken)
 		}
-		tkzr.IncrementIndex()
-	}
 
+		if tkzr.IndexInBound() && tkzr.CurrentChar() == '\n' && tkzr.Index() == tempIndex && !tkzr.tempIgnoreChangesFromIncrement {
+			tkzr.currentIndex++ // Moves from this newline token to a new token if it had not already progressed
+		}
+	}
 }
 
-func (tkzr *Tokenizer) GatherWhitespace(updateCurrentIndex bool) string {
+func (tkzr *Tokenizer) PrintCurrentInfo(args ...string) {
+	optionalInfo := ""
+	for _, arg := range args {
+		optionalInfo += arg
+	}
+	fmt.Println("------------------------------------------------------")
+	fmt.Printf("CURRENT INFO (%s): ", optionalInfo)
+	util.PrintTime()
+	fmt.Println()
+	fmt.Println("\tGENERAL: ")
+	fmt.Printf("\t\tIndex: %d\tAsciiOfIndex: %d\tCharOfIndex: '%s'\n", tkzr.currentIndex, int(tkzr.CurrentChar()), string(tkzr.CurrentChar()))
+	fmt.Printf("\t\tLine Num: %d\t Tab Level: %d\n", tkzr.currentLineNumber, tkzr.currentTabLevel)
+	fmt.Println("\tBOOLS:")
+	fmt.Printf("\t\ttempIgnoreChangesFromIncrement %t\tskipIncrement: %t\n", tkzr.tempIgnoreChangesFromIncrement, tkzr.skipIncrement)
+	fmt.Println("\tFUNCTION INFO: ")
+	fmt.Printf("\t\tStartInfo: %s\tEndInfo:%s\tFunctionSharedInfo: %s\n", tkzr.StartInfo, tkzr.EndInfo, tkzr.FunctionSharedInfo)
+	fmt.Println("\tCURRENT SCOPE:")
+	fmt.Printf("\t\tSize: %d\tType: %s\n", tkzr.currentScope.Size(), tkzr.currentScope.GetType())
+	lastFewTokens := ""
+	numberOfPreviousTokens := 5
+	for i := tkzr.currentScope.Size() - 1; i > 0 && i > tkzr.currentScope.Size()-1-numberOfPreviousTokens; i-- {
+		tkn, err := tkzr.currentScope.At(i)
+		if err != nil {
+			continue
+		}
+		lastFewTokens += tkn.ToString() + "\t"
+	}
+	fmt.Printf("\t\tLast few tokens: %s\n", lastFewTokens)
+	fmt.Println("------------------------------------------------------")
+}
+
+func (tkzr *Tokenizer) gatherWhitespace(updateCurrentIndex bool) string {
 	gatheredWhitespace := ""
-	index := tkzr.currentIndex
+	index := tkzr.currentIndex + 1
 	var char rune
 	for tkzr.DetermineIfIndexInBound(index) {
 		char = tkzr.GetChar(index)

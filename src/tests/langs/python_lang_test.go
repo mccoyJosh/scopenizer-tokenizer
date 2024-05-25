@@ -1,16 +1,16 @@
-package java
+package langs_test
 
 import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
-	javaTokenizer "tp/src/instances/langs/java/tokenizer"
+	pyTokenizer "tp/src/instances/langs/python/tokenizer"
 	"tp/src/util"
 )
 
-func Test_javaTokenizer(t *testing.T) {
-	tokenizer := javaTokenizer.GetJavaTokenizer()
-	filepath := "../../exampleFiles/hello.java"
+func Test_pythonTokenizer(t *testing.T) {
+	tokenizer := pyTokenizer.GetPythonTokenizer()
+	filepath := "../exampleFiles/hello.py"
 	text, err := util.GetTextOfFile(filepath)
 	if err != nil {
 		util.Error(fmt.Sprintf("Failed to find file: %s", filepath), err)
@@ -19,9 +19,9 @@ func Test_javaTokenizer(t *testing.T) {
 
 	tokensScope := tokenizer.Tokenize(text)
 
-	jsonString := tokensScope.ToJsonString("testTagJava")
-	util.MakeDir("../../../../output")
-	_ = util.CreateFileWithInfo("../../../../output/java_output.json", jsonString)
+	jsonString := tokensScope.ToJsonString("testTagPython")
+	util.MakeDir("../../../output")
+	_ = util.CreateFileWithInfo("../../../output/python_output.json", jsonString)
 	//for i := 0; i < tokensScope.Size(); i++ {
 	//	st1, _ := tokensScope.At(i)
 	//	switch i {

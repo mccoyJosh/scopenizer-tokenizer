@@ -27,9 +27,8 @@ func CreateUnidentifiedToken(text string, lineNumber int, tabNum int) Token {
 	}
 }
 
-func (t *Token) PrintToken() {
-	// TODO Fix this
-	fmt.Printf("Token:\n\ttxt:%s\tln:%d\ttb:%d\tbrkc:%d\tsn:%s\trn:%s\n", t.Text, t.LineNumber, t.TabNumber, t.SymbolicName, t.RuleName)
+func (t *Token) ToString() string {
+	return fmt.Sprintf("[Tkn: txt:%s\tln:%d\ttb:%d\tsn:%s\trn:%s]", t.Text, t.LineNumber, t.TabNumber, t.SymbolicName, t.RuleName)
 }
 
 func (t *Token) Equal(t2 Token) bool {
