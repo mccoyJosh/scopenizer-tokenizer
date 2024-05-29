@@ -137,83 +137,6 @@ func GenerateDefaultTokenizerObject() Tokenizer {
 	}
 }
 
-func (tkzr *Tokenizer) ConfigureIgnores(ignoreString bool, ignoreComments bool, ignoreWhitespaces bool, ignoreNewLines bool) {
-	tkzr.IncludeStrings = !ignoreString
-	tkzr.IncludeComments = !ignoreComments
-	tkzr.IgnoreWhitespace = ignoreWhitespaces
-	tkzr.IgnoreNewLines = ignoreNewLines
-}
-
-func (tkzr *Tokenizer) ConfigureGeneral(language string, symbols [][]string, keywords []string, isKeywordCharacterFunction func(c rune) bool) {
-	tkzr.LanguageType = language
-	tkzr.Symbols = symbols
-	tkzr.Keywords = keywords
-	tkzr.IsKeywordCharacter = isKeywordCharacterFunction
-}
-
-func (tkzr *Tokenizer) ConfigureScope(startFunction func(tkzr *Tokenizer) bool, endFunction func(tkzr *Tokenizer) bool) {
-	tkzr.ScopeStartFunction = startFunction
-	tkzr.ScopeEndFunction = endFunction
-}
-
-func (tkzr *Tokenizer) ConfigureString(startFunction func(tkzr *Tokenizer) bool, endFunction func(tkzr *Tokenizer) bool) {
-	tkzr.StringStartFunction = startFunction
-	tkzr.StringEndFunction = endFunction
-}
-
-func (tkzr *Tokenizer) ConfigureComment(startFunction func(tkzr *Tokenizer) bool, endFunction func(tkzr *Tokenizer) bool) {
-	tkzr.CommentStartFunction = startFunction
-	tkzr.CommentEndFunction = endFunction
-}
-
-func (tkzr *Tokenizer) IsConfigured() error {
-	errorString := ""
-
-	// General Configure
-	if tkzr.LanguageType == "" {
-		errorString += fmt.Sprintf("LanguageType not configured correctly (cannot be empty string)... USE .ConfigureGeneral to fix\n")
-	}
-	if tkzr.Symbols == nil {
-		errorString += fmt.Sprintf("Symbols not configured correctly (cannot be nil)... USE .ConfigureGeneral to fix\n")
-	}
-	if tkzr.Keywords == nil {
-		errorString += fmt.Sprintf("Keywords not configured correctly (cannot be nil)... USE .ConfigureGeneral to fix\n")
-	}
-	if tkzr.IsKeywordCharacter == nil {
-		errorString += fmt.Sprintf("IsKeywordsCharacter not configured correctly (cannot be nil)... USE .ConfigureGeneral to fix\n")
-	}
-
-	// Scope Configure
-	if tkzr.ScopeStartFunction == nil {
-		errorString += fmt.Sprintf("ScopeStartFunction not configured correctly (cannot be nil)... USE .ConfigureScope to fix\n")
-	}
-	if tkzr.ScopeEndFunction == nil {
-		errorString += fmt.Sprintf("ScopeEndFunction not configured correctly (cannot be nil)... USE .ConfigureScope to fix\n")
-	}
-
-	// String Configure
-	if tkzr.StringStartFunction == nil {
-		errorString += fmt.Sprintf("StringStartFunction not configured correctly (cannot be nil)... USE .ConfigureString to fix\n")
-	}
-	if tkzr.StringEndFunction == nil {
-		errorString += fmt.Sprintf("StringEndFunction not configured correctly (cannot be nil)... USE .ConfigureString to fix\n")
-	}
-
-	// Comment Configure
-	if tkzr.CommentStartFunction == nil {
-		errorString += fmt.Sprintf("CommentStartFunction not configured correctly (cannot be nil)... USE .ConfigureComment to fix\n")
-	}
-	if tkzr.CommentEndFunction == nil {
-		errorString += fmt.Sprintf("CommentEndFunction not configured correctly (cannot be nil)... USE .ConfigureComment to fix\n")
-	}
-
-	if errorString != "" {
-		err := errors.New(errorString)
-		return err
-	}
-	return nil
-}
-
 func (tkzr *Tokenizer) initTempVariables(text *string) {
 	tkzr.tempIgnoreChangesFromIncrement = false
 	tkzr.initSpaceSizeString()
@@ -254,12 +177,12 @@ func (tkzr *Tokenizer) Tokenize(text string) tk.ScopeObj {
 				tkzr.potentialKeyword = ""
 			}
 			if foundString {
-				resultingToken := tkzr.applyFunctionUntilFailureTokenCreation(tkzr.StringEndFunction, "STRING")
+				resultingToken := tkzr.applyFunctionUntilFailureTokenCreation(tkzr.StringEndFunction, SYMBOLIC_NAME_STRING)
 				if tkzr.IncludeStrings {
 					tkzr.currentScope.Push(resultingToken)
 				}
 			} else if foundComment {
-				resultingToken := tkzr.applyFunctionUntilFailureTokenCreation(tkzr.CommentEndFunction, "COMMENT")
+				resultingToken := tkzr.applyFunctionUntilFailureTokenCreation(tkzr.CommentEndFunction, SYMBOLIC_NAME_COMMENT)
 				if tkzr.IncludeComments {
 					tkzr.currentScope.Push(resultingToken)
 				}
@@ -296,30 +219,22 @@ func (tkzr *Tokenizer) Tokenize(text string) tk.ScopeObj {
 			if tkzr.IsKeywordCharacter(rune(char)) {
 				tkzr.potentialKeyword += string(char)
 			} else { // Found a symbol, which needs to be added and
-				if tkzr.potentialKeyword != "" {
-					tkzr.currentScope.Push(tkzr.createKeywordToken(tkzr.potentialKeyword))
-					tkzr.potentialKeyword = ""
-				}
+				tkzr.AddPotentialKeyword()
 				newSymbolToken := tkzr.createSymbolToken(string(char))
 
-				if newSymbolToken.SymbolicName == "WHITESPACE" {
+				if newSymbolToken.SymbolicName == SYMBOLIC_NAME_WHITESPACE {
 					if !tkzr.IgnoreWhitespace {
-						newSymbolToken.RuleName = "OTHER"
 						tkzr.currentScope.Push(newSymbolToken)
 					}
-				} else if newSymbolToken.SymbolicName == "NEWLINE" {
-					tkzr.currentLineNumber++
-					if !tkzr.IgnoreWhitespace {
-						newSymbolToken.RuleName = "OTHER"
-						tkzr.currentScope.Push(newSymbolToken)
-					}
+				} else if newSymbolToken.SymbolicName == SYMBOLIC_NAME_NEWLINE {
+					tkzr.dealWithNewline()
 				} else {
 					tkzr.currentScope.Push(newSymbolToken)
 				}
 			}
 		}
 		if !tkzr.skipIncrement {
-			tkzr.IncrementIndex()
+			tkzr.currentIndex++
 		}
 	}
 
@@ -329,6 +244,13 @@ func (tkzr *Tokenizer) Tokenize(text string) tk.ScopeObj {
 	}
 
 	return finalScope
+}
+
+func (tkzr *Tokenizer) AddPotentialKeyword() {
+	if tkzr.potentialKeyword != "" {
+		tkzr.currentScope.Push(tkzr.createKeywordToken(tkzr.potentialKeyword))
+		tkzr.potentialKeyword = ""
+	}
 }
 
 func (tkzr *Tokenizer) PrintCharIndices() {
@@ -385,8 +307,14 @@ func (tkzr *Tokenizer) applyFunctionUntilFailureTokenCreation(BooleanEndFunction
 		tkzr.IncrementIndex()
 	}
 	tokenText = tkzr.StartInfo + tokenText + tkzr.EndInfo
+
+	if tkzr.IndexInBound() && len(tkzr.EndInfo) > 0 && tkzr.CurrentChar() != rune(tkzr.EndInfo[0]) {
+		tkzr.SkipIncrement()
+	}
+
 	finalToken := tk.CreateUnidentifiedToken(tokenText, lineNumber, tabLevel)
-	finalToken.SetValues("OTHER", symbolicName)
+	finalToken.SetValues(RULENAME_OTHER, symbolicName)
+
 	return &finalToken
 }
 
@@ -396,27 +324,40 @@ func (tkzr *Tokenizer) GetCurrentLineNumber() int {
 
 func (tkzr *Tokenizer) IncrementIndex() {
 	tkzr.currentIndex++
-	if tkzr.IndexInBound() && tkzr.CurrentChar() == '\n' { // Encounters a newline
-		if !tkzr.IgnoreNewLines && !tkzr.tempIgnoreChangesFromIncrement { // (potentially) adding the new line character token
+	tkzr.dealWithNewline()
+	for tkzr.IndexInBound() && tkzr.CurrentChar() == '\n' {
+		tkzr.currentIndex++
+		tkzr.dealWithNewline()
+	}
+}
+
+func (tkzr *Tokenizer) dealWithNewline() {
+	// Ensure we are on a newline
+	if tkzr.IndexInBound() && tkzr.CurrentChar() == '\n' {
+		if !tkzr.tempIgnoreChangesFromIncrement {
+			tkzr.AddPotentialKeyword()
+		}
+
+		// Adds newline token, if applicable
+		if !tkzr.IgnoreNewLines && !tkzr.tempIgnoreChangesFromIncrement {
 			newToken := tk.CreateUnidentifiedToken("\n", tkzr.currentLineNumber, tkzr.currentTabLevel)
-			newToken.SetValues("OTHER", "NEWLINE")
+			newToken.SetValues(RULENAME_OTHER, SYMBOLIC_NAME_NEWLINE)
 			tkzr.currentScope.Push(&newToken)
 		}
+
+		// Increments line number to keep track of line
 		tkzr.currentLineNumber++
-		tempIndex := tkzr.Index()
 
 		// Gets the tab level for this line
 		gatheredWhitespace := tkzr.gatherWhitespace(!tkzr.tempIgnoreChangesFromIncrement)
 		numOfTabs := util.DetermineNumberOfTabs(gatheredWhitespace, tkzr.NumOfSpacesEquallyTab, true)
 		tkzr.currentTabLevel = numOfTabs
+
+		// Adds whitespace token, if applicable
 		if !tkzr.IgnoreWhitespace && !tkzr.tempIgnoreChangesFromIncrement {
 			newToken := tk.CreateUnidentifiedToken(gatheredWhitespace, tkzr.currentLineNumber, tkzr.currentTabLevel)
-			newToken.SetValues("OTHER", "WHITESPACE")
+			newToken.SetValues(RULENAME_OTHER, SYMBOLIC_NAME_WHITESPACE)
 			tkzr.currentScope.Push(&newToken)
-		}
-
-		if tkzr.IndexInBound() && tkzr.CurrentChar() == '\n' && tkzr.Index() == tempIndex && !tkzr.tempIgnoreChangesFromIncrement {
-			tkzr.currentIndex++ // Moves from this newline token to a new token if it had not already progressed
 		}
 	}
 }
@@ -465,8 +406,8 @@ func (tkzr *Tokenizer) gatherWhitespace(updateCurrentIndex bool) string {
 		}
 		index++
 	}
-	if updateCurrentIndex {
-		tkzr.currentIndex = index
+	if updateCurrentIndex && gatheredWhitespace != "" {
+		tkzr.currentIndex = index - 1 // TODO: maybe we don't need to do this!
 	}
 	return gatheredWhitespace
 }
@@ -489,13 +430,16 @@ func (tkzr *Tokenizer) initSpaceSizeString() {
 
 func (tkzr *Tokenizer) createKeywordToken(keywordString string) *tk.Token {
 	newToken := tk.CreateUnidentifiedToken(keywordString, tkzr.currentLineNumber, tkzr.currentTabLevel)
-	newToken.SetValues("KEYWORD", tkzr.identifyKeyword(keywordString))
+	newToken.SetValues(RULENAME_KEYWORD, tkzr.identifyKeyword(keywordString))
 	return &newToken
 }
 
 func (tkzr *Tokenizer) createSymbolToken(symbolString string) *tk.Token {
 	newToken := tk.CreateUnidentifiedToken(symbolString, tkzr.currentLineNumber, tkzr.currentTabLevel)
-	newToken.SetValues("SYMBOL", tkzr.identifySymbol(symbolString))
+	newToken.SetValues(RULENAME_SYMBOL, tkzr.identifySymbol(symbolString))
+	if newToken.SymbolicName == SYMBOLIC_NAME_WHITESPACE || newToken.SymbolicName == SYMBOLIC_NAME_NEWLINE {
+		newToken.RuleName = RULENAME_OTHER
+	}
 	return &newToken
 }
 
@@ -507,7 +451,7 @@ func (tkzr *Tokenizer) identifyKeyword(keywordString string) string {
 		}
 	}
 	if symbolicName == "" {
-		symbolicName = "IDENTIFIER"
+		symbolicName = SYMBOLIC_NAME_NON_KEYWORD
 	}
 	return symbolicName
 }
@@ -520,18 +464,18 @@ func (tkzr *Tokenizer) identifySymbol(symbol string) string {
 		}
 	}
 	if symbol == " " {
-		symbolicName = "WHITESPACE"
+		symbolicName = SYMBOLIC_NAME_WHITESPACE
 	} else if symbol == "\n" {
-		symbolicName = "NEWLINE"
+		symbolicName = SYMBOLIC_NAME_NEWLINE
 	} else if symbolicName == "" {
-		symbolicName = "UNKNOWN"
+		symbolicName = SYMBOLIC_NAME_UNKNOWN_SYMBOL
 	}
 	return symbolicName
 }
 
 func (tkzr *Tokenizer) createTokenType(tokenString string) *tk.Token {
 	possibleKeyword := tkzr.identifyKeyword(tokenString)
-	if possibleKeyword == "IDENTIFIER" {
+	if possibleKeyword == SYMBOLIC_NAME_NON_KEYWORD {
 		return tkzr.createSymbolToken(tokenString)
 	}
 	return tkzr.createKeywordToken(tokenString)
