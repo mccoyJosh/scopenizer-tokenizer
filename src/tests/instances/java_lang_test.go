@@ -1,10 +1,10 @@
-package langs_test
+package instances_test
 
 import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
-	javaTokenizer "tp/src/instances/langs/java/tokenizer"
+	javaTokenizer "tp/src/instances/langs/java"
 	"tp/src/tests"
 	tz "tp/src/tokenizer"
 	"tp/src/util"
@@ -21,10 +21,12 @@ func Test_javaTokenizer(t *testing.T) {
 
 	tokensScope := tokenizer.Tokenize(text)
 
+	// FOR DEBUGGING
 	//jsonString := tokensScope.ToJsonString("testTagJava")
 	//util.MakeDir("../../../output")
 	//_ = util.CreateFileWithInfo("../../../output/java_output.json", jsonString)
 
+	assert.Equal(t, 7, tokensScope.Size())
 	for i := 0; i < tokensScope.Size(); i++ {
 		st1, _ := tokensScope.At(i)
 		switch i {
@@ -42,6 +44,7 @@ func Test_javaTokenizer(t *testing.T) {
 			{
 				assert.True(t, st1.ValidScopeToken())
 				sc1 := st1.GetScopeToken()
+				assert.Equal(t, 13, sc1.Size())
 				for j := 0; j < sc1.Size(); j++ {
 					st2, _ := sc1.At(j)
 					switch j {
@@ -71,6 +74,7 @@ func Test_javaTokenizer(t *testing.T) {
 						{
 							assert.True(t, st2.ValidScopeToken())
 							sc2 := st2.GetScopeToken()
+							assert.Equal(t, 10, sc2.Size())
 							for k := 0; k < sc2.Size(); k++ {
 								st3, _ := sc2.At(k)
 								switch k {

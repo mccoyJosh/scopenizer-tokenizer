@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
+	tz "tp/src/tokenizer"
 	tk "tp/src/tokenizer/tokens"
 )
 
@@ -17,4 +18,12 @@ func ValidateToken(t *testing.T, tkn *tk.Token, expectedLineNum int, expectedTab
 	assert.Equal(t, expectedText, tkn.Text, invalidTokenStr)
 	assert.Equal(t, expectedLineNum, tkn.LineNumber, invalidTokenStr)
 	assert.Equal(t, expectedTabNum, tkn.TabNumber, invalidTokenStr)
+}
+
+func VerifyUnknownSymbol(t *testing.T, tkn *tk.Token, expectedLineNum int, expectedTabNum int, expectedText string) {
+	ValidateToken(t, tkn, expectedLineNum, expectedTabNum, tz.RULENAME_SYMBOL, tz.SYMBOLIC_NAME_UNKNOWN_SYMBOL, expectedText)
+}
+
+func VerifyUnknownKeyword(t *testing.T, tkn *tk.Token, expectedLineNum int, expectedTabNum int, expectedText string) {
+	ValidateToken(t, tkn, expectedLineNum, expectedTabNum, tz.RULENAME_KEYWORD, tz.SYMBOLIC_NAME_NON_KEYWORD, expectedText)
 }

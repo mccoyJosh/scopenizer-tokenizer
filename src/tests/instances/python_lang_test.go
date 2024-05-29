@@ -1,10 +1,10 @@
-package langs_test
+package instances_test
 
 import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
-	pyTokenizer "tp/src/instances/langs/python/tokenizer"
+	pyTokenizer "tp/src/instances/langs/python"
 	"tp/src/tests"
 	tz "tp/src/tokenizer"
 	"tp/src/util"
@@ -21,10 +21,12 @@ func Test_pythonTokenizer(t *testing.T) {
 
 	tokensScope := tokenizer.Tokenize(text)
 
+	// FOR DEBUGGING
 	jsonString := tokensScope.ToJsonString("testTagPython")
 	util.MakeDir("../../../output")
 	_ = util.CreateFileWithInfo("../../../output/python_output.json", jsonString)
 
+	assert.Equal(t, 17, tokensScope.Size())
 	for i := 0; i < tokensScope.Size(); i++ {
 		st1, _ := tokensScope.At(i)
 		switch i {
@@ -47,6 +49,7 @@ func Test_pythonTokenizer(t *testing.T) {
 				//SCOPE
 				assert.True(t, st1.ValidScopeToken())
 				scope_a := st1.GetScopeToken()
+				assert.Equal(t, 7, scope_a.Size())
 				for j := 0; j < scope_a.Size(); j++ {
 					st_a, _ := scope_a.At(j)
 					switch j {
@@ -67,6 +70,7 @@ func Test_pythonTokenizer(t *testing.T) {
 							// SCOPE
 							assert.True(t, st_a.ValidScopeToken())
 							scope_b := st_a.GetScopeToken()
+							assert.Equal(t, 5, scope_b.Size())
 							for k := 0; k < scope_b.Size(); k++ {
 								st_b, _ := scope_b.At(k)
 								switch j {
@@ -78,6 +82,8 @@ func Test_pythonTokenizer(t *testing.T) {
 									tests.ValidateToken(t, st_a, 5, 2, tz.RULENAME_SYMBOL, tz.SYMBOLIC_NAME_NON_KEYWORD, "str")
 								case 3:
 									tests.ValidateToken(t, st_b, 5, 2, tz.RULENAME_SYMBOL, "RPAREN", ")")
+								case 4:
+									tests.ValidateToken(t, st_b, 5, 2, tz.RULENAME_OTHER, tz.SYMBOLIC_NAME_COMMENT, "# This is recursive and is never intended to be run\n")
 								}
 							}
 						}
@@ -99,6 +105,7 @@ func Test_pythonTokenizer(t *testing.T) {
 				//SCOPE
 				assert.True(t, st1.ValidScopeToken())
 				scope_a := st1.GetScopeToken()
+				assert.Equal(t, 4, scope_a.Size())
 				for j := 0; j < scope_a.Size(); j++ {
 					st_a, _ := scope_a.At(j)
 					switch j {
