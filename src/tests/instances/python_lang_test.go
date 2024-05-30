@@ -22,9 +22,9 @@ func Test_pythonTokenizer(t *testing.T) {
 	tokensScope := tokenizer.Tokenize(text)
 
 	// FOR DEBUGGING
-	jsonString := tokensScope.ToJsonString("testTagPython")
-	util.MakeDir("../../../output")
-	_ = util.CreateFileWithInfo("../../../output/python_output.json", jsonString)
+	//jsonString := tokensScope.ToJsonString("testTagPython")
+	//util.MakeDir("../../../output")
+	//_ = util.CreateFileWithInfo("../../../output/python_output.json", jsonString)
 
 	assert.Equal(t, 17, tokensScope.Size())
 	for i := 0; i < tokensScope.Size(); i++ {

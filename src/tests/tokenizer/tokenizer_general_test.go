@@ -154,3 +154,21 @@ func Test_dullTokenizer(t *testing.T) {
 		}
 	}
 }
+
+func Test_dullTokenizer_dotText(t *testing.T) {
+	tokenizer := tz.CreateDullTokenizer()
+	filepath := "../exampleFiles/words.txt"
+	text, err := util.GetTextOfFile(filepath)
+	if err != nil {
+		util.Error(fmt.Sprintf("Failed to find file: %s", filepath), err)
+		assert.Fail(t, "No file found")
+	}
+
+	tokensScope := tokenizer.Tokenize(text)
+
+	// FOR DEBUGGING
+	//jsonString := tokensScope.ToJsonString("testTagDull")
+	//util.MakeDir("../../../output")
+	//_ = util.CreateFileWithInfo("../../../output/dull_output_txt.json", jsonString)
+	assert.Equal(t, 7, tokensScope.Size())
+}

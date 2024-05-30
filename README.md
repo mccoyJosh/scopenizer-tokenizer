@@ -5,7 +5,7 @@
 A tokenizer written purely in Go... which also can find scope!
 
 
-----
+
 
 ## Motivation
 
@@ -14,7 +14,7 @@ of finding the tokens within a programming language along with
 distinguishing where scopes begin/end. Despite this being the
 goal, the scopenizer tokenizer can be utilized for other parsing type tasks.
 
-----
+
 
 ## Installation
 
@@ -22,13 +22,13 @@ goal, the scopenizer tokenizer can be utilized for other parsing type tasks.
 TODO
 ```
 
-----
+
 
 ## Usage
 
 
 
-----
+
 
 ## LICENSE
 

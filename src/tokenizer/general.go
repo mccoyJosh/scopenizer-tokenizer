@@ -1,7 +1,8 @@
-// Package tokenizer is... TODO THIS
+// The package is TODO
 
 package tokenizer
 
+// Constants for defining commonly used tokens types
 const (
 	RULENAME_KEYWORD             = "KEYWORD"
 	RULENAME_SYMBOL              = "SYMBOL"
