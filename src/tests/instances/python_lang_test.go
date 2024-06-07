@@ -19,7 +19,8 @@ func Test_pythonTokenizer(t *testing.T) {
 		assert.Fail(t, "No file found")
 	}
 
-	tokensScope := tokenizer.Tokenize(text)
+	tokensScope, err := tokenizer.Tokenize(text)
+	assert.Nil(t, err)
 
 	// FOR DEBUGGING
 	//jsonString := tokensScope.ToJsonString("testTagPython")

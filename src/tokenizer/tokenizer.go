@@ -50,15 +50,18 @@ type Tokenizer struct {
 	NumOfSpacesEquallyTab int
 	IgnoreWhitespace      bool
 	IgnoreNewLines        bool
+
+	// Final Steps
+	FinalSteps func(tkzr *Tokenizer, finalScope *tk.ScopeObj) error
 }
 
 // Tokenize
 // Takes a string and tokenizes the contents of it into a ScopeObj object.
-func (tkzr *Tokenizer) Tokenize(text string) tk.ScopeObj {
+// Returns an error if the tokenizer is not configured correctly or an error results from the final steps.
+func (tkzr *Tokenizer) Tokenize(text string) (tk.ScopeObj, error) {
 	err := tkzr.IsConfigured()
 	if err != nil {
-		util.Error("TOKENIZER NOT CONFIGURED CORRECTLY", err)
-		panic(err)
+		return tk.InitScope(), err
 	}
 
 	tkzr.initTempVariables(&text)
@@ -94,7 +97,14 @@ func (tkzr *Tokenizer) Tokenize(text string) tk.ScopeObj {
 		tkzr.potentialKeyword = ""
 	}
 
-	return finalScope
+	if tkzr.FinalSteps != nil {
+		err = tkzr.FinalSteps(tkzr, &finalScope)
+		if err != nil {
+			return finalScope, err
+		}
+	}
+
+	return finalScope, nil
 }
 
 // applyBeforeFunction

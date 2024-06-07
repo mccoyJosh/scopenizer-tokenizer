@@ -19,7 +19,8 @@ func Test_javaTokenizer(t *testing.T) {
 		assert.Fail(t, "No file found")
 	}
 
-	tokensScope := tokenizer.Tokenize(text)
+	tokensScope, err := tokenizer.Tokenize(text)
+	assert.Nil(t, err)
 
 	// FOR DEBUGGING
 	//jsonString := tokensScope.ToJsonString("testTagJava")
@@ -110,4 +111,42 @@ func Test_javaTokenizer(t *testing.T) {
 			tests.ValidateToken(t, st1, 11, 0, tz.RULENAME_SYMBOL, "RCURLY", "}")
 		}
 	}
+}
+
+func Test_javaTokenizer_CharsAndNums(t *testing.T) {
+	tokenizer := javaTokenizer.GetJavaTokenizer()
+	filepath := "../exampleFiles/charAndNums.java"
+	text, err := util.GetTextOfFile(filepath)
+	if err != nil {
+		util.Error(fmt.Sprintf("Failed to find file: %s", filepath), err)
+		assert.Fail(t, "No file found")
+	}
+
+	tokensScope, err := tokenizer.Tokenize(text)
+	assert.Nil(t, err)
+
+	// FOR DEBUGGING
+	jsonString := tokensScope.ToJsonString("testTagJava")
+	util.MakeDir("../../../output")
+	_ = util.CreateFileWithInfo("../../../output/java_output_char_nums.json", jsonString)
+
+}
+
+func Test_javaTokenizer_LargeFile(t *testing.T) {
+	tokenizer := javaTokenizer.GetJavaTokenizer()
+	filepath := "../exampleFiles/file.java"
+	text, err := util.GetTextOfFile(filepath)
+	if err != nil {
+		util.Error(fmt.Sprintf("Failed to find file: %s", filepath), err)
+		assert.Fail(t, "No file found")
+	}
+
+	tokensScope, err := tokenizer.Tokenize(text)
+	assert.Nil(t, err)
+
+	// FOR DEBUGGING
+	jsonString := tokensScope.ToJsonString("testTagJava")
+	util.MakeDir("../../../output")
+	_ = util.CreateFileWithInfo("../../../output/java_output_file.json", jsonString)
+
 }
